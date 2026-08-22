@@ -1,729 +1,982 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>AtomicLyrics</title>
-  <style>
-    :root {
-      --bg: #090e17;
-      --card-bg: #111927;
-      --accent: #38bdf8;
-      --accent-hover: #0284c7;
-      --border: #1e293b;
-      --text: #f8fafc;
-      --text-muted: #64748b;
-    }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>AtomicLyrics — lyrics, decomposed</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0e141c;
+    --bg-deep:#0a0f15;
+    --panel:#141c27;
+    --panel-raised:#182130;
+    --hairline:#25313f;
+    --ink:#eae6db;
+    --ink-dim:#8b96a5;
+    --ink-faint:#4d5867;
+    --brass:#d4a24c;
+    --brass-soft:#8c733a;
+    --teal:#5eead4;
+    --teal-deep:#1f6f63;
+    --danger:#e2725b;
+    --radius-sm:6px;
+    --radius-md:12px;
+    --radius-lg:20px;
+    --font-display:'Fraunces', serif;
+    --font-body:'Inter', sans-serif;
+    --font-mono:'JetBrains Mono', monospace;
+    --dock-h:132px;
+  }
 
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(circle at 12% -10%, rgba(94,234,212,0.06), transparent 40%),
+      radial-gradient(circle at 88% 0%, rgba(212,162,76,0.07), transparent 45%),
+      var(--bg);
+    color:var(--ink);
+    font-family:var(--font-body);
+    overflow:hidden;
+    -webkit-font-smoothing:antialiased;
+  }
+  ::selection{ background:var(--teal-deep); color:var(--ink); }
 
-    body {
-      background-color: var(--bg);
-      color: var(--text);
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
+  .app{
+    height:100dvh;
+    display:flex;
+    flex-direction:column;
+  }
 
-    header {
-      background: var(--card-bg);
-      border-bottom: 1px solid var(--border);
-      padding: 14px 16px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      z-index: 10;
-    }
+  /* ---------- header ---------- */
+  .app-header{
+    flex:0 0 auto;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:16px;
+    padding:18px 26px 14px;
+    border-bottom:1px solid var(--hairline);
+    background:linear-gradient(180deg, rgba(20,28,39,0.9), rgba(20,28,39,0));
+  }
+  .brand{ display:flex; align-items:center; gap:12px; min-width:0; }
+  .brand-mark{
+    width:40px; height:40px; flex:0 0 auto;
+    border:1.5px solid var(--brass);
+    border-radius:8px;
+    display:flex; align-items:center; justify-content:center;
+    font-family:var(--font-mono); font-weight:700; font-size:19px;
+    color:var(--brass);
+    position:relative;
+    box-shadow: inset 0 0 12px rgba(212,162,76,0.12);
+  }
+  .brand-mark::after{
+    content:'89';
+    position:absolute; top:1px; left:3px;
+    font-size:6px; letter-spacing:0.5px; color:var(--brass-soft);
+    font-family:var(--font-mono);
+  }
+  .brand-text h1{
+    margin:0; font-family:var(--font-display); font-weight:600;
+    font-size:21px; letter-spacing:0.2px; color:var(--ink);
+  }
+  .brand-text p{
+    margin:1px 0 0; font-size:11.5px; color:var(--ink-dim);
+    letter-spacing:0.3px;
+  }
+  .now-playing{
+    font-family:var(--font-mono); font-size:12px; color:var(--teal);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    max-width:42vw;
+    padding:6px 12px;
+    border:1px solid var(--teal-deep);
+    border-radius:100px;
+    background:rgba(94,234,212,0.05);
+  }
+  .now-playing .np-sep{ color:var(--ink-faint); margin:0 6px; }
+  .now-playing #npArtist{ color:var(--ink-dim); }
 
-    .logo-badge {
-      background: linear-gradient(135deg, #38bdf8, #0284c7);
-      color: #090e17;
-      font-weight: 800;
-      padding: 5px 10px;
-      border-radius: 6px;
-      font-size: 0.85rem;
-    }
+  /* ---------- lyrics viewport ---------- */
+  .lyrics-viewport{
+    flex:1 1 auto;
+    overflow-y:auto;
+    padding:8vh 18px calc(var(--dock-h) + 6vh);
+    -webkit-mask-image:linear-gradient(to bottom, transparent 0, #000 48px, #000 calc(100% - 60px), transparent 100%);
+            mask-image:linear-gradient(to bottom, transparent 0, #000 48px, #000 calc(100% - 60px), transparent 100%);
+    scrollbar-width:thin;
+    scrollbar-color:var(--hairline) transparent;
+  }
+  .lyrics-viewport::-webkit-scrollbar{ width:6px; }
+  .lyrics-viewport::-webkit-scrollbar-thumb{ background:var(--hairline); border-radius:4px; }
 
-    .track-meta {
-      overflow: hidden;
-      white-space: nowrap;
-      text-overflow: ellipsis;
-    }
+  .empty-state{
+    max-width:420px;
+    margin:8vh auto 0;
+    text-align:center;
+    color:var(--ink-dim);
+    display:flex; flex-direction:column; align-items:center; gap:18px;
+  }
+  .empty-tile{
+    width:64px; height:64px;
+    border:2px dashed var(--hairline);
+    border-radius:var(--radius-md);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:2px;
+    color:var(--ink-faint);
+  }
+  .empty-tile .tile-num{ font-size:9px; font-family:var(--font-mono); }
+  .empty-tile .tile-sym{ font-size:22px; font-family:var(--font-mono); font-weight:700; }
+  .empty-state p{ margin:0; font-size:14.5px; line-height:1.6; }
+  .empty-state .hint-sub{ font-size:12px; color:var(--ink-faint); }
 
-    .status-label {
-      font-size: 0.65rem;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      font-weight: 600;
-    }
+  .lyrics-stream{
+    max-width:760px;
+    margin:0 auto;
+    display:flex;
+    flex-direction:column;
+    gap:2px;
+  }
 
-    .song-title {
-      font-weight: 600;
-      font-size: 0.95rem;
-      color: var(--accent);
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
+  .lyric-line{
+    padding:9px 16px;
+    border-radius:var(--radius-md);
+    cursor:pointer;
+    display:flex;
+    flex-wrap:wrap;
+    align-items:baseline;
+    gap:0;
+    row-gap:6px;
+    line-height:1.5;
+    transition:background-color .25s ease, opacity .25s ease;
+    opacity:0.42;
+    outline:none;
+  }
+  .lyric-line:hover{ background:rgba(255,255,255,0.035); opacity:0.75; }
+  .lyric-line:focus-visible{ box-shadow:0 0 0 2px var(--teal); opacity:0.9; }
+  .lyric-line.active{
+    opacity:1;
+    background:linear-gradient(90deg, rgba(94,234,212,0.08), rgba(94,234,212,0.02) 60%, transparent);
+  }
+  .lyric-line.active .tile{ border-color:var(--teal); }
+  .lyric-line.active .tile .tile-sym{ color:var(--teal); }
+  .lyric-line.no-sync{ cursor:default; }
 
-    /* Main Scrolling Lyrics Area */
-    #lyrics-viewport {
-      flex: 1;
-      overflow-y: auto;
-      padding: 24px 14px 190px;
-      scroll-behavior: smooth;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 16px;
-    }
+  .word{ display:inline-flex; align-items:baseline; margin:0 5px 0 0; }
+  .raw{
+    font-family:var(--font-body);
+    color:var(--ink-dim);
+    font-size:15px;
+    white-space:pre-wrap;
+  }
+  .lyric-line .raw{ align-self:center; }
 
-    .lyric-line {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      align-items: center;
-      gap: 6px;
-      opacity: 0.35;
-      transform: scale(0.96);
-      transition: opacity 0.25s ease, transform 0.25s ease;
-      cursor: pointer;
-      line-height: 1.6;
-      width: 100%;
-      max-width: 700px;
-    }
+  .tile{
+    position:relative;
+    display:inline-flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    width:30px; height:30px;
+    margin:0 1.5px;
+    border:1.5px solid var(--hairline);
+    border-radius:5px;
+    background:var(--panel-raised);
+    transition:border-color .2s ease, transform .15s ease;
+  }
+  .lyric-line:hover .tile{ transform:translateY(-1px); }
+  .tile .tile-num{
+    position:absolute; top:2px; left:3px;
+    font-family:var(--font-mono); font-size:6px; color:var(--brass);
+    letter-spacing:0.2px;
+  }
+  .tile .tile-sym{
+    font-family:var(--font-mono); font-weight:700; font-size:13px;
+    color:var(--ink); line-height:1; margin-top:2px;
+  }
 
-    .lyric-line.active {
-      opacity: 1;
-      transform: scale(1.03);
-    }
+  /* ---------- dock ---------- */
+  .dock{
+    flex:0 0 auto;
+    border-top:1px solid var(--hairline);
+    background:linear-gradient(180deg, rgba(14,20,28,0), var(--bg-deep) 30%);
+    padding:12px 18px calc(14px + env(safe-area-inset-bottom));
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+  }
+  .player-bar{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    max-width:760px;
+    width:100%;
+    margin:0 auto;
+  }
+  .play-btn{
+    flex:0 0 auto;
+    width:38px; height:38px;
+    border-radius:50%;
+    border:1.5px solid var(--brass);
+    background:rgba(212,162,76,0.08);
+    color:var(--brass);
+    font-size:14px;
+    cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    transition:background .2s ease, transform .1s ease;
+  }
+  .play-btn:hover{ background:rgba(212,162,76,0.18); }
+  .play-btn:active{ transform:scale(0.94); }
+  .time{
+    font-family:var(--font-mono); font-size:11.5px; color:var(--ink-dim);
+    flex:0 0 auto; min-width:38px; text-align:center;
+  }
+  .scrub{
+    -webkit-appearance:none; appearance:none;
+    flex:1 1 auto;
+    height:3px;
+    border-radius:3px;
+    background:var(--hairline);
+    outline:none;
+    cursor:pointer;
+  }
+  .scrub::-webkit-slider-thumb{
+    -webkit-appearance:none; appearance:none;
+    width:12px; height:12px; border-radius:50%;
+    background:var(--teal);
+    border:2px solid var(--bg-deep);
+    margin-top:-4.5px;
+    cursor:pointer;
+  }
+  .scrub::-moz-range-thumb{
+    width:10px; height:10px; border-radius:50%;
+    background:var(--teal); border:2px solid var(--bg-deep); cursor:pointer;
+  }
+  .scrub::-webkit-slider-runnable-track{ height:3px; border-radius:3px; background:var(--hairline); }
 
-    .word-box {
-      display: inline-flex;
-      align-items: center;
-      gap: 2px;
-      background: rgba(30, 41, 59, 0.45);
-      padding: 3px 5px;
-      border-radius: 6px;
-      border: 1px solid rgba(255, 255, 255, 0.04);
-    }
+  .search-bar{
+    display:flex; gap:8px;
+    max-width:760px; width:100%; margin:0 auto;
+  }
+  .search-bar input{
+    flex:1 1 auto;
+    background:var(--panel);
+    border:1.5px solid var(--hairline);
+    border-radius:100px;
+    padding:11px 18px;
+    color:var(--ink);
+    font-family:var(--font-body);
+    font-size:14px;
+    outline:none;
+    transition:border-color .2s ease;
+  }
+  .search-bar input::placeholder{ color:var(--ink-faint); }
+  .search-bar input:focus{ border-color:var(--teal-deep); }
+  .search-bar button{
+    flex:0 0 auto;
+    background:var(--brass);
+    color:#20180a;
+    border:none;
+    border-radius:100px;
+    padding:0 20px;
+    font-family:var(--font-body);
+    font-weight:600;
+    font-size:13.5px;
+    cursor:pointer;
+    letter-spacing:0.2px;
+    transition:filter .15s ease, transform .1s ease;
+  }
+  .search-bar button:hover{ filter:brightness(1.08); }
+  .search-bar button:active{ transform:scale(0.97); }
+  .search-bar button:disabled{ opacity:0.55; cursor:progress; }
 
-    /* Periodic Table Tile */
-    .element-tile {
-      display: inline-flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: space-between;
-      width: 36px;
-      height: 42px;
-      background: linear-gradient(135deg, #0284c7, #0369a1);
-      border: 1px solid #7dd3fc;
-      border-radius: 5px;
-      padding: 2px 3px;
-      box-shadow: 0 0 8px rgba(56, 189, 248, 0.2);
-      user-select: none;
-      flex-shrink: 0;
-    }
+  .yt-holder{ position:fixed; bottom:2px; right:2px; width:2px; height:2px; overflow:hidden; opacity:0.001; pointer-events:none; }
 
-    .lyric-line.active .element-tile {
-      background: linear-gradient(135deg, #38bdf8, #0284c7);
-      box-shadow: 0 0 12px rgba(56, 189, 248, 0.5);
-    }
+  /* ---------- modals ---------- */
+  .modal-overlay{
+    position:fixed; inset:0;
+    background:rgba(6,9,13,0.72);
+    backdrop-filter:blur(3px);
+    display:flex; align-items:center; justify-content:center;
+    z-index:50;
+    padding:20px;
+  }
+  .modal{
+    width:100%; max-width:520px;
+    max-height:78vh;
+    background:var(--panel);
+    border:1px solid var(--hairline);
+    border-radius:var(--radius-lg);
+    display:flex; flex-direction:column;
+    overflow:hidden;
+    box-shadow:0 30px 80px rgba(0,0,0,0.5);
+  }
+  .modal-head{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:18px 20px 12px;
+    border-bottom:1px solid var(--hairline);
+    flex:0 0 auto;
+  }
+  .modal-head h2{
+    margin:0; font-family:var(--font-display); font-weight:600; font-size:18px;
+  }
+  .modal-close{
+    background:none; border:none; color:var(--ink-dim); font-size:22px;
+    cursor:pointer; line-height:1; padding:2px 6px;
+  }
+  .modal-close:hover{ color:var(--ink); }
+  .modal-body{ padding:14px 20px 20px; overflow-y:auto; }
 
-    .element-tile .atomic-num {
-      font-size: 0.5rem;
-      align-self: flex-start;
-      color: #bae6fd;
-      font-weight: 700;
-      line-height: 1;
-    }
+  .result-item{
+    display:flex; align-items:center; gap:12px;
+    padding:11px 12px;
+    border-radius:var(--radius-sm);
+    cursor:pointer;
+    border:1px solid transparent;
+    transition:background .15s ease, border-color .15s ease;
+  }
+  .result-item:hover{ background:var(--panel-raised); border-color:var(--hairline); }
+  .result-main{ flex:1 1 auto; min-width:0; }
+  .result-title{ font-size:14.5px; font-weight:600; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .result-sub{ font-size:12.5px; color:var(--ink-dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:1px; }
+  .result-badge{
+    flex:0 0 auto; font-family:var(--font-mono); font-size:9.5px;
+    padding:3px 7px; border-radius:100px; letter-spacing:0.3px;
+  }
+  .result-badge.synced{ color:var(--teal); border:1px solid var(--teal-deep); background:rgba(94,234,212,0.06); }
+  .result-badge.plain{ color:var(--ink-faint); border:1px solid var(--hairline); }
+  .result-dur{ font-family:var(--font-mono); font-size:11.5px; color:var(--ink-faint); flex:0 0 auto; }
+  .modal-status{ color:var(--ink-dim); font-size:14px; padding:20px 4px; text-align:center; }
 
-    .element-tile .symbol {
-      font-size: 0.95rem;
-      font-weight: 700;
-      color: #ffffff;
-      line-height: 1;
-    }
+  .modal-hint{ font-size:13px; color:var(--ink-dim); line-height:1.6; margin:0 0 14px; }
+  .yt-search-link{
+    display:inline-block; margin-bottom:16px;
+    color:var(--teal); font-size:13px; text-decoration:none;
+    border-bottom:1px solid var(--teal-deep); padding-bottom:1px;
+  }
+  .yt-search-link:hover{ color:var(--ink); }
+  #ytUrlInput{
+    width:100%; background:var(--panel-raised); border:1.5px solid var(--hairline);
+    border-radius:var(--radius-sm); padding:11px 14px; color:var(--ink);
+    font-family:var(--font-mono); font-size:13px; outline:none; margin-bottom:12px;
+  }
+  #ytUrlInput:focus{ border-color:var(--teal-deep); }
+  #ytLoadBtn{
+    width:100%; background:var(--teal); color:#062420; border:none;
+    border-radius:var(--radius-sm); padding:12px; font-weight:600; font-size:14px;
+    cursor:pointer; font-family:var(--font-body);
+  }
+  #ytLoadBtn:hover{ filter:brightness(1.06); }
 
-    .element-tile .name {
-      font-size: 0.42rem;
-      color: #e0f2fe;
-      text-transform: uppercase;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      max-width: 30px;
-      line-height: 1;
-    }
+  [hidden]{ display:none !important; }
 
-    .plain-char {
-      font-size: 0.95rem;
-      font-weight: 600;
-      color: var(--text-muted);
-      padding: 0 2px;
-    }
+  @media (max-width: 640px){
+    .app-header{ padding:14px 16px 10px; }
+    .brand-text h1{ font-size:18px; }
+    .brand-text p{ display:none; }
+    .now-playing{ max-width:38vw; font-size:10.5px; }
+    .lyrics-viewport{ padding:6vh 10px calc(var(--dock-h) + 5vh); }
+    .lyric-line{ padding:8px 8px; font-size:14px; }
+    .tile{ width:26px; height:26px; }
+    .tile .tile-sym{ font-size:11.5px; }
+    .dock{ padding:10px 12px calc(12px + env(safe-area-inset-bottom)); }
+  }
 
-    /* Track Selection Sheet */
-    #search-results-modal {
-      position: fixed;
-      top: 70px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: calc(100% - 32px);
-      max-width: 580px;
-      max-height: 340px;
-      background: #131d2e;
-      border: 1px solid var(--accent);
-      border-radius: 10px;
-      overflow-y: auto;
-      z-index: 50;
-      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.8);
-      display: none;
-    }
-
-    .result-item {
-      padding: 12px 16px;
-      border-bottom: 1px solid var(--border);
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .result-item:hover {
-      background: #1e293b;
-    }
-
-    .result-thumb {
-      width: 44px;
-      height: 44px;
-      border-radius: 6px;
-      object-fit: cover;
-      background: #090e17;
-      flex-shrink: 0;
-    }
-
-    .result-info {
-      flex: 1;
-      overflow: hidden;
-    }
-
-    .result-item-title {
-      font-size: 0.95rem;
-      font-weight: 600;
-      color: var(--text);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .result-item-artist {
-      font-size: 0.75rem;
-      color: var(--accent);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    /* Bottom Control Bar & Search */
-    footer {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      width: 100%;
-      background: var(--card-bg);
-      border-top: 1px solid var(--border);
-      padding: 12px 16px env(safe-area-inset-bottom, 12px);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 10px;
-      z-index: 30;
-      box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.5);
-    }
-
-    .footer-container {
-      width: 100%;
-      max-width: 600px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-
-    .player-row {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      background: #0b121e;
-      padding: 8px 14px;
-      border-radius: 10px;
-      border: 1px solid var(--border);
-    }
-
-    .play-btn {
-      background: var(--accent);
-      color: #090e17;
-      border: none;
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      font-size: 1rem;
-      font-weight: bold;
-      transition: transform 0.15s ease;
-      flex-shrink: 0;
-    }
-
-    .play-btn:hover {
-      background: #7dd3fc;
-      transform: scale(1.05);
-    }
-
-    .seek-slider {
-      flex: 1;
-      height: 6px;
-      -webkit-appearance: none;
-      appearance: none;
-      background: #1e293b;
-      border-radius: 3px;
-      outline: none;
-      cursor: pointer;
-    }
-
-    .seek-slider::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      appearance: none;
-      width: 14px;
-      height: 14px;
-      border-radius: 50%;
-      background: var(--accent);
-      cursor: pointer;
-      box-shadow: 0 0 6px rgba(56, 189, 248, 0.6);
-    }
-
-    .time-readout {
-      font-size: 0.75rem;
-      color: var(--text-muted);
-      min-width: 75px;
-      text-align: right;
-      font-variant-numeric: tabular-nums;
-    }
-
-    .search-row {
-      display: flex;
-      gap: 8px;
-    }
-
-    input[type="text"] {
-      flex: 1;
-      padding: 10px 14px;
-      border-radius: 8px;
-      border: 1px solid var(--border);
-      background: #090e17;
-      color: var(--text);
-      font-size: 0.95rem;
-      outline: none;
-    }
-
-    input[type="text"]:focus {
-      border-color: var(--accent);
-    }
-
-    .search-btn {
-      padding: 10px 18px;
-      border-radius: 8px;
-      border: none;
-      background: var(--accent);
-      color: #090e17;
-      font-weight: 700;
-      cursor: pointer;
-      white-space: nowrap;
-      transition: background 0.2s ease;
-    }
-
-    .search-btn:hover {
-      background: #7dd3fc;
-    }
-
-    .status-text {
-      text-align: center;
-      font-size: 0.75rem;
-      color: var(--text-muted);
-    }
-  </style>
+  @media (prefers-reduced-motion: reduce){
+    *{ animation:none !important; transition:none !important; }
+  }
+</style>
 </head>
 <body>
 
-  <header>
-    <span class="logo-badge">AtomicLyrics</span>
-    <div class="track-meta">
-      <div class="status-label">CURRENT PLAYBACK</div>
-      <div class="song-title" id="track-name">Search a song below...</div>
+<div class="app">
+  <header class="app-header">
+    <div class="brand">
+      <span class="brand-mark">Ly</span>
+      <div class="brand-text">
+        <h1>AtomicLyrics</h1>
+        <p>lyrics, decomposed into the periodic table</p>
+      </div>
+    </div>
+    <div class="now-playing" id="nowPlaying" hidden>
+      <span id="npTitle"></span><span class="np-sep">·</span><span id="npArtist"></span>
     </div>
   </header>
 
-  <!-- Track Selection List -->
-  <div id="search-results-modal"></div>
-
-  <!-- Native HTML5 Full Audio Stream Engine -->
-  <audio id="audio-engine" preload="auto" crossorigin="anonymous"></audio>
-
-  <!-- Scrolling Lyrics Viewport -->
-  <main id="lyrics-viewport">
-    <p style="color: var(--text-muted); margin-top: 40px; text-align: center;">
-      Search any song title below (e.g. "Gehra Hua", "Kesariya", "Believer")
-    </p>
+  <main class="lyrics-viewport" id="lyricsViewport">
+    <div class="empty-state" id="emptyState">
+      <div class="empty-tile"><span class="tile-num">0</span><span class="tile-sym">?</span></div>
+      <p>Search a track below. Every line gets rebuilt from element symbols — the ones that don't fit stay in plain type.</p>
+      <p class="hint-sub">Try "Because — The Beatles" for a clean run of tiles.</p>
+    </div>
+    <div class="lyrics-stream" id="lyricsStream"></div>
   </main>
 
-  <!-- Bottom Dock -->
-  <footer>
-    <div class="footer-container">
-      <div class="player-row">
-        <button class="play-btn" id="toggle-play-btn" title="Play/Pause">▶</button>
-        <input type="range" id="seek-bar" class="seek-slider" min="0" max="100" value="0">
-        <span class="time-readout" id="time-display">0:00 / 0:00</span>
-      </div>
-
-      <div class="search-row">
-        <input type="text" id="search-input" placeholder="Search track name..." />
-        <button class="search-btn" id="search-btn">Search & Play</button>
-      </div>
-
-      <div class="status-text" id="status-display">Ready</div>
+  <footer class="dock">
+    <div class="player-bar" id="playerBar" hidden>
+      <button class="play-btn" id="playBtn" aria-label="Play">▶</button>
+      <span class="time" id="timeCurrent">00:00</span>
+      <input type="range" class="scrub" id="scrub" min="0" max="1000" value="0" aria-label="Seek">
+      <span class="time" id="timeTotal">00:00</span>
     </div>
+    <form class="search-bar" id="searchForm">
+      <input type="text" id="searchInput" placeholder="Search a track — title, artist, or both" autocomplete="off">
+      <button type="submit" id="searchBtn">Search &amp; Play</button>
+    </form>
   </footer>
+</div>
 
-  <script>
-    // 1. Complete Periodic Table Elements Dictionary
-    const ELEMENTS = {
-      H: { n: 1, name: "Hydrog" }, HE: { n: 2, name: "Helium" },
-      LI: { n: 3, name: "Lithium" }, BE: { n: 4, name: "Berylli" },
-      B: { n: 5, name: "Boron" }, C: { n: 6, name: "Carbon" },
-      N: { n: 7, name: "Nitrog" }, O: { n: 8, name: "Oxygen" },
-      F: { n: 9, name: "Fluorin" }, NE: { n: 10, name: "Neon" },
-      NA: { n: 11, name: "Sodium" }, MG: { n: 12, name: "Magnes" },
-      AL: { n: 13, name: "Alumin" }, SI: { n: 14, name: "Silicon" },
-      P: { n: 15, name: "Phosph" }, S: { n: 16, name: "Sulfur" },
-      CL: { n: 17, name: "Chlori" }, AR: { n: 18, name: "Argon" },
-      K: { n: 19, name: "Potassi" }, CA: { n: 20, name: "Calcium" },
-      SC: { n: 21, name: "Scandi" }, TI: { n: 22, name: "Titani" },
-      V: { n: 23, name: "Vanadi" }, CR: { n: 24, name: "Chromi" },
-      MN: { n: 25, name: "Mangan" }, FE: { n: 26, name: "Iron" },
-      CO: { n: 27, name: "Cobalt" }, NI: { n: 28, name: "Nickel" },
-      CU: { n: 29, name: "Copper" }, ZN: { n: 30, name: "Zinc" },
-      GA: { n: 31, name: "Gallium" }, GE: { n: 32, name: "Germa" },
-      AS: { n: 33, name: "Arsenic" }, SE: { n: 34, name: "Seleniu" },
-      BR: { n: 35, name: "Bromine" }, KR: { n: 36, name: "Krypton" },
-      RB: { n: 37, name: "Rubidi" }, SR: { n: 38, name: "Stronti" },
-      Y: { n: 39, name: "Yttrium" }, ZR: { n: 40, name: "Zircon" },
-      NB: { n: 41, name: "Niobium" }, MO: { n: 42, name: "Molybd" },
-      TC: { n: 43, name: "Techne" }, RU: { n: 44, name: "Ruthen" },
-      RH: { n: 45, name: "Rhodium" }, PD: { n: 46, name: "Pallad" },
-      AG: { n: 47, name: "Silver" }, CD: { n: 48, name: "Cadmiu" },
-      IN: { n: 49, name: "Indium" }, SN: { n: 50, name: "Tin" },
-      SB: { n: 51, name: "Antim" }, TE: { n: 52, name: "Tellur" },
-      I: { n: 53, name: "Iodine" }, XE: { n: 54, name: "Xenon" },
-      CS: { n: 55, name: "Cesium" }, BA: { n: 56, name: "Barium" },
-      LA: { n: 57, name: "Lanthan" }, CE: { n: 58, name: "Cerium" },
-      PR: { n: 59, name: "Praseo" }, ND: { n: 60, name: "Neodym" },
-      AU: { n: 79, name: "Gold" }, HG: { n: 80, name: "Mercury" },
-      PB: { n: 82, name: "Lead" }, U: { n: 92, name: "Uraniu" },
-      PU: { n: 94, name: "Pluton" }
-    };
+<div class="yt-holder"><div id="ytPlayer"></div></div>
 
-    // 2. DP Backtracking Solver for Chemical Decomposition
-    function findOptimalDecomposition(word) {
-      const memo = new Map();
+<div class="modal-overlay" id="modalOverlay" hidden>
+  <div class="modal">
+    <div class="modal-head">
+      <h2 id="modalTitle">Select a match</h2>
+      <button class="modal-close" id="modalClose" aria-label="Close">×</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
 
-      function solve(index) {
-        if (index >= word.length) return { score: 0, tokens: [] };
-        if (memo.has(index)) return memo.get(index);
+<div class="modal-overlay" id="ytModalOverlay" hidden>
+  <div class="modal">
+    <div class="modal-head">
+      <h2>Link the recording</h2>
+      <button class="modal-close" id="ytModalClose" aria-label="Close">×</button>
+    </div>
+    <div class="modal-body">
+      <p class="modal-hint">Lyrics come from LRCLIB; audio streams through the official YouTube player. Find the recording, then paste its link below.</p>
+      <a id="ytSearchLink" class="yt-search-link" href="#" target="_blank" rel="noopener">Search YouTube for this track ↗</a>
+      <input type="text" id="ytUrlInput" placeholder="Paste a YouTube link or video ID">
+      <button id="ytLoadBtn" type="button">Load &amp; Play</button>
+    </div>
+  </div>
+</div>
 
-        let bestResult = null;
+<script src="https://www.youtube.com/iframe_api"></script>
+<script>
+(function(){
+  'use strict';
 
-        if (index + 2 <= word.length) {
-          const sub2 = word.slice(index, index + 2).toUpperCase();
-          if (ELEMENTS[sub2]) {
-            const next = solve(index + 2);
-            const candidate = {
-              score: next.score + 10,
-              tokens: [{
-                symbol: word[index].toUpperCase() + word[index + 1].toLowerCase(),
-                info: ELEMENTS[sub2],
-                isElement: true
-              }, ...next.tokens]
-            };
-            if (!bestResult || candidate.score > bestResult.score) bestResult = candidate;
-          }
+  /* =========================================================
+     Periodic table dictionary (all 118 elements)
+     ========================================================= */
+  const ELEMENTS = {
+    H:[1,'Hydrogen'], He:[2,'Helium'], Li:[3,'Lithium'], Be:[4,'Beryllium'], B:[5,'Boron'],
+    C:[6,'Carbon'], N:[7,'Nitrogen'], O:[8,'Oxygen'], F:[9,'Fluorine'], Ne:[10,'Neon'],
+    Na:[11,'Sodium'], Mg:[12,'Magnesium'], Al:[13,'Aluminium'], Si:[14,'Silicon'], P:[15,'Phosphorus'],
+    S:[16,'Sulfur'], Cl:[17,'Chlorine'], Ar:[18,'Argon'], K:[19,'Potassium'], Ca:[20,'Calcium'],
+    Sc:[21,'Scandium'], Ti:[22,'Titanium'], V:[23,'Vanadium'], Cr:[24,'Chromium'], Mn:[25,'Manganese'],
+    Fe:[26,'Iron'], Co:[27,'Cobalt'], Ni:[28,'Nickel'], Cu:[29,'Copper'], Zn:[30,'Zinc'],
+    Ga:[31,'Gallium'], Ge:[32,'Germanium'], As:[33,'Arsenic'], Se:[34,'Selenium'], Br:[35,'Bromine'],
+    Kr:[36,'Krypton'], Rb:[37,'Rubidium'], Sr:[38,'Strontium'], Y:[39,'Yttrium'], Zr:[40,'Zirconium'],
+    Nb:[41,'Niobium'], Mo:[42,'Molybdenum'], Tc:[43,'Technetium'], Ru:[44,'Ruthenium'], Rh:[45,'Rhodium'],
+    Pd:[46,'Palladium'], Ag:[47,'Silver'], Cd:[48,'Cadmium'], In:[49,'Indium'], Sn:[50,'Tin'],
+    Sb:[51,'Antimony'], Te:[52,'Tellurium'], I:[53,'Iodine'], Xe:[54,'Xenon'], Cs:[55,'Caesium'],
+    Ba:[56,'Barium'], La:[57,'Lanthanum'], Ce:[58,'Cerium'], Pr:[59,'Praseodymium'], Nd:[60,'Neodymium'],
+    Pm:[61,'Promethium'], Sm:[62,'Samarium'], Eu:[63,'Europium'], Gd:[64,'Gadolinium'], Tb:[65,'Terbium'],
+    Dy:[66,'Dysprosium'], Ho:[67,'Holmium'], Er:[68,'Erbium'], Tm:[69,'Thulium'], Yb:[70,'Ytterbium'],
+    Lu:[71,'Lutetium'], Hf:[72,'Hafnium'], Ta:[73,'Tantalum'], W:[74,'Tungsten'], Re:[75,'Rhenium'],
+    Os:[76,'Osmium'], Ir:[77,'Iridium'], Pt:[78,'Platinum'], Au:[79,'Gold'], Hg:[80,'Mercury'],
+    Tl:[81,'Thallium'], Pb:[82,'Lead'], Bi:[83,'Bismuth'], Po:[84,'Polonium'], At:[85,'Astatine'],
+    Rn:[86,'Radon'], Fr:[87,'Francium'], Ra:[88,'Radium'], Ac:[89,'Actinium'], Th:[90,'Thorium'],
+    Pa:[91,'Protactinium'], U:[92,'Uranium'], Np:[93,'Neptunium'], Pu:[94,'Plutonium'], Am:[95,'Americium'],
+    Cm:[96,'Curium'], Bk:[97,'Berkelium'], Cf:[98,'Californium'], Es:[99,'Einsteinium'], Fm:[100,'Fermium'],
+    Md:[101,'Mendelevium'], No:[102,'Nobelium'], Lr:[103,'Lawrencium'], Rf:[104,'Rutherfordium'], Db:[105,'Dubnium'],
+    Sg:[106,'Seaborgium'], Bh:[107,'Bohrium'], Hs:[108,'Hassium'], Mt:[109,'Meitnerium'], Ds:[110,'Darmstadtium'],
+    Rg:[111,'Roentgenium'], Cn:[112,'Copernicium'], Nh:[113,'Nihonium'], Fl:[114,'Flerovium'], Mc:[115,'Moscovium'],
+    Lv:[116,'Livermorium'], Ts:[117,'Tennessine'], Og:[118,'Oganesson']
+  };
+
+  /* =========================================================
+     Memoized DP / backtracking chemical decomposer — O(n) per word
+     ========================================================= */
+  function decomposeWord(word){
+    const n = word.length;
+    const memo = new Array(n + 1);
+    memo[n] = { score: 0, choice: 'end' };
+
+    function solve(i){
+      if (memo[i] !== undefined) return memo[i];
+      let best = { score: -Infinity, choice: 'skip' };
+
+      if (i + 2 <= n){
+        const sub = word.slice(i, i + 2);
+        const canon = sub[0].toUpperCase() + sub[1].toLowerCase();
+        if (ELEMENTS[canon]){
+          const rest = solve(i + 2);
+          const score = rest.score + 3;
+          if (score > best.score) best = { score, choice: 'sym2', canon };
         }
-
-        const sub1 = word[index].toUpperCase();
-        if (ELEMENTS[sub1]) {
-          const next = solve(index + 1);
-          const candidate = {
-            score: next.score + 5,
-            tokens: [{
-              symbol: sub1,
-              info: ELEMENTS[sub1],
-              isElement: true
-            }, ...next.tokens]
-          };
-          if (!bestResult || candidate.score > bestResult.score) bestResult = candidate;
+      }
+      {
+        const canon1 = word[i].toUpperCase();
+        if (ELEMENTS[canon1]){
+          const rest = solve(i + 1);
+          const score = rest.score + 1;
+          if (score > best.score) best = { score, choice: 'sym1', canon: canon1 };
         }
-
-        const fallbackNext = solve(index + 1);
-        const fallback = {
-          score: fallbackNext.score - 1,
-          tokens: [{
-            symbol: word[index],
-            info: null,
-            isElement: false
-          }, ...fallbackNext.tokens]
-        };
-        if (!bestResult || fallback.score > bestResult.score) bestResult = fallback;
-
-        memo.set(index, bestResult);
-        return bestResult;
+      }
+      {
+        const rest = solve(i + 1);
+        const score = rest.score;
+        if (score > best.score) best = { score, choice: 'skip' };
       }
 
-      return solve(0).tokens;
+      memo[i] = best;
+      return best;
     }
 
-    function renderLineElements(lineText) {
-      return lineText.split(/\s+/).map(word => {
-        if (!word) return '';
-        const tokens = findOptimalDecomposition(word);
-        const innerTiles = tokens.map(t => {
-          if (t.isElement) {
-            return `
-              <div class="element-tile">
-                <span class="atomic-num">${t.info.n}</span>
-                <span class="symbol">${t.symbol}</span>
-                <span class="name">${t.info.name}</span>
-              </div>
-            `;
-          }
-          return `<span class="plain-char">${t.symbol}</span>`;
-        }).join('');
+    for (let i = n - 1; i >= 0; i--) solve(i);
 
-        return `<div class="word-box">${innerTiles}</div>`;
-      }).join(' ');
-    }
+    const segments = [];
+    let i = 0, rawBuf = '';
+    const flushRaw = () => { if (rawBuf){ segments.push({ type:'raw', text: rawBuf }); rawBuf = ''; } };
 
-    // 3. LRC Parser
-    function parseLRC(lrcText) {
-      const lines = lrcText.split('\n');
-      const result = [];
-      const timeRegex = /\[(\d{2}):(\d{2})\.(\d{2,3})\]/;
-
-      lines.forEach(line => {
-        const match = line.match(timeRegex);
-        if (match) {
-          const minutes = parseInt(match[1], 10);
-          const seconds = parseInt(match[2], 10);
-          const ms = parseFloat('0.' + match[3]);
-          const totalSeconds = minutes * 60 + seconds + ms;
-          const text = line.replace(timeRegex, '').trim();
-          if (text) result.push({ time: totalSeconds, text });
-        }
-      });
-      return result.sort((a, b) => a.time - b.time);
-    }
-
-    // 4. Audio Engine & UI Controller
-    const audio = document.getElementById('audio-engine');
-    const playBtn = document.getElementById('toggle-play-btn');
-    const seekBar = document.getElementById('seek-bar');
-    const timeDisplay = document.getElementById('time-display');
-    const statusText = document.getElementById('status-display');
-    const trackName = document.getElementById('track-name');
-    const viewport = document.getElementById('lyrics-viewport');
-    const resultsModal = document.getElementById('search-results-modal');
-
-    let lyricsData = [];
-    let isUserSeeking = false;
-
-    function formatTime(seconds) {
-      const mins = Math.floor(seconds / 60) || 0;
-      const secs = Math.floor(seconds % 60) || 0;
-      return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
-    }
-
-    audio.addEventListener('play', () => { playBtn.textContent = '⏸'; });
-    audio.addEventListener('pause', () => { playBtn.textContent = '▶'; });
-
-    audio.addEventListener('timeupdate', () => {
-      const currentSec = audio.currentTime;
-      const duration = audio.duration || 0;
-
-      if (!isUserSeeking && duration > 0) {
-        seekBar.value = (currentSec / duration) * 100;
-        timeDisplay.textContent = `${formatTime(currentSec)} / ${formatTime(duration)}`;
-      }
-
-      if (lyricsData.length === 0) return;
-
-      lyricsData.forEach((line, idx) => {
-        const nextLine = lyricsData[idx + 1];
-        const lineElem = document.getElementById(`lyric-${idx}`);
-
-        if (currentSec >= line.time && (!nextLine || currentSec < nextLine.time)) {
-          if (lineElem && !lineElem.classList.contains('active')) {
-            document.querySelectorAll('.lyric-line').forEach(el => el.classList.remove('active'));
-            lineElem.classList.add('active');
-            lineElem.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          }
-        }
-      });
-    });
-
-    // 5. Unified Track Search via JioSaavn Search API
-    async function executeSearch(query) {
-      statusText.textContent = `Searching for "${query}"...`;
-      resultsModal.innerHTML = '';
-      resultsModal.style.display = 'none';
-
-      try {
-        const res = await fetch(`https://saavn.dev/api/search/songs?query=${encodeURIComponent(query)}&limit=10`);
-        const data = await res.json();
-        const songs = data?.data?.results || [];
-
-        if (songs.length === 0) {
-          statusText.textContent = "No audio matches found.";
-          return;
-        }
-
-        resultsModal.style.display = 'block';
-        songs.forEach(song => {
-          const item = document.createElement('div');
-          item.className = 'result-item';
-          
-          const thumb = song.image && song.image.length > 0 ? song.image[song.image.length - 1].url : '';
-          const primaryArtist = song.artists?.primary?.map(a => a.name).join(', ') || 'Various Artists';
-
-          item.innerHTML = `
-            <img class="result-thumb" src="${thumb}" alt="art" onerror="this.style.display='none'">
-            <div class="result-info">
-              <div class="result-item-title">${song.name}</div>
-              <div class="result-item-artist">${primaryArtist} • ${song.album?.name || ''}</div>
-            </div>
-          `;
-
-          item.addEventListener('click', () => {
-            resultsModal.style.display = 'none';
-            loadSongTrack(song);
-          });
-
-          resultsModal.appendChild(item);
-        });
-
-        statusText.textContent = "Select your song from the list above.";
-      } catch (err) {
-        statusText.textContent = "Search connection error. Please try again.";
-      }
-    }
-
-    // 6. Play Track & Query Matched Lyrics
-    async function loadSongTrack(song) {
-      const primaryArtist = song.artists?.primary?.map(a => a.name).join(', ') || '';
-      const cleanTitle = song.name.replace(/\(.*?\)/g, '').replace(/\[.*?\]/g, '').trim();
-      
-      trackName.textContent = `${primaryArtist} - ${cleanTitle}`;
-      viewport.innerHTML = '';
-      lyricsData = [];
-      statusText.textContent = "Loading full audio stream & periodic lyrics...";
-
-      // A. Extract High-Quality Full Audio Stream
-      const downloadList = song.downloadUrl || [];
-      const bestAudio = downloadList.find(d => d.quality === '320kbps') || 
-                        downloadList.find(d => d.quality === '160kbps') || 
-                        downloadList[downloadList.length - 1];
-
-      if (bestAudio && bestAudio.url) {
-        audio.src = bestAudio.url;
-        audio.play().catch(() => {
-          statusText.textContent = "Tap Play (▶) to begin streaming.";
-        });
-      }
-
-      // B. Fetch Synced Lyrics from LRCLIB using full-text search
-      try {
-        const lyricsRes = await fetch(`https://lrclib.net/api/search?q=${encodeURIComponent(cleanTitle + ' ' + primaryArtist.split(',')[0])}`);
-        const lyricsList = await lyricsRes.json();
-        const bestLyrics = lyricsList && lyricsList.length > 0 ? lyricsList[0] : null;
-
-        if (bestLyrics && bestLyrics.syncedLyrics) {
-          lyricsData = parseLRC(bestLyrics.syncedLyrics);
-          lyricsData.forEach((line, idx) => {
-            const lineDiv = document.createElement('div');
-            lineDiv.className = 'lyric-line';
-            lineDiv.id = `lyric-${idx}`;
-            lineDiv.innerHTML = renderLineElements(line.text);
-            
-            lineDiv.addEventListener('click', () => {
-              audio.currentTime = line.time;
-              audio.play();
-            });
-            viewport.appendChild(lineDiv);
-          });
-          statusText.textContent = "Full song streaming with synced lyrics.";
-        } else if (bestLyrics && bestLyrics.plainLyrics) {
-          bestLyrics.plainLyrics.split('\n').forEach(text => {
-            if (!text.trim()) return;
-            const lineDiv = document.createElement('div');
-            lineDiv.className = 'lyric-line active';
-            lineDiv.innerHTML = renderLineElements(text);
-            viewport.appendChild(lineDiv);
-          });
-          statusText.textContent = "Full song streaming (Plain lyrics).";
-        } else {
-          viewport.innerHTML = `<p style="color: var(--text-muted); margin-top: 40px; text-align: center;">Full track streaming. You can find the full lyrics by searching for the song on Google.</p>`;
-          statusText.textContent = "Full audio streaming.";
-        }
-      } catch (e) {
-        viewport.innerHTML = `<p style="color: var(--text-muted); margin-top: 40px; text-align: center;">Full track streaming. You can find the full lyrics by searching for the song on Google.</p>`;
-        statusText.textContent = "Full audio streaming.";
-      }
-    }
-
-    // 7. Event Handlers
-    playBtn.addEventListener('click', () => {
-      if (audio.paused) {
-        audio.play();
+    while (i < n){
+      const step = memo[i];
+      if (step.choice === 'sym2'){
+        flushRaw();
+        const [num, name] = ELEMENTS[step.canon];
+        segments.push({ type:'element', symbol: step.canon, num, name, original: word.slice(i, i+2) });
+        i += 2;
+      } else if (step.choice === 'sym1'){
+        flushRaw();
+        const [num, name] = ELEMENTS[step.canon];
+        segments.push({ type:'element', symbol: step.canon, num, name, original: word.slice(i, i+1) });
+        i += 1;
       } else {
-        audio.pause();
+        rawBuf += word[i];
+        i += 1;
       }
-    });
+    }
+    flushRaw();
+    return segments;
+  }
 
-    seekBar.addEventListener('mousedown', () => { isUserSeeking = true; });
-    seekBar.addEventListener('touchstart', () => { isUserSeeking = true; });
+  function decomposeLine(text){
+    if (!text || !text.trim()) return [{ type:'raw', text:'♪' }];
+    const tokens = text.match(/[A-Za-z]+|[^A-Za-z]+/g) || [];
+    const out = [];
+    for (const tok of tokens){
+      if (/[A-Za-z]/.test(tok)) out.push({ type:'word', segments: decomposeWord(tok) });
+      else out.push({ type:'raw', text: tok });
+    }
+    return out;
+  }
 
-    seekBar.addEventListener('change', () => {
-      if (audio.duration) {
-        audio.currentTime = (seekBar.value / 100) * audio.duration;
+  /* =========================================================
+     LRC parsing
+     ========================================================= */
+  function parseLRC(lrc){
+    const TIME = /\[(\d{1,2}):(\d{2}(?:\.\d{1,3})?)\]/g;
+    const lines = lrc.split(/\r?\n/);
+    const rows = [];
+    for (const raw of lines){
+      TIME.lastIndex = 0;
+      const times = [];
+      let m;
+      while ((m = TIME.exec(raw)) !== null){
+        times.push(parseInt(m[1], 10) * 60 + parseFloat(m[2]));
       }
-      isUserSeeking = false;
-    });
+      if (!times.length) continue;
+      const text = raw.replace(TIME, '').trim();
+      for (const t of times) rows.push({ time: t, text });
+    }
+    rows.sort((a, b) => a.time - b.time);
+    return rows;
+  }
 
-    document.getElementById('search-btn').addEventListener('click', () => {
-      const val = document.getElementById('search-input').value.trim();
-      if (val) executeSearch(val);
-    });
+  function formatTime(sec){
+    if (!isFinite(sec) || sec < 0) sec = 0;
+    const m = Math.floor(sec / 60);
+    const s = Math.floor(sec % 60);
+    return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+  }
 
-    document.getElementById('search-input').addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') {
-        const val = document.getElementById('search-input').value.trim();
-        if (val) executeSearch(val);
+  /* =========================================================
+     Rendering
+     ========================================================= */
+  const lyricsViewport = document.getElementById('lyricsViewport');
+  const lyricsStream = document.getElementById('lyricsStream');
+  const emptyState = document.getElementById('emptyState');
+
+  function buildLineElement(lineObj, index){
+    const el = document.createElement('div');
+    el.className = 'lyric-line' + (lineObj.time === null ? ' no-sync' : '');
+    el.dataset.index = String(index);
+    if (lineObj.time !== null) el.dataset.time = String(lineObj.time);
+    el.tabIndex = lineObj.time !== null ? 0 : -1;
+    el.setAttribute('role', lineObj.time !== null ? 'button' : 'presentation');
+
+    const segs = decomposeLine(lineObj.text);
+    for (const seg of segs){
+      if (seg.type === 'raw'){
+        const span = document.createElement('span');
+        span.className = 'raw';
+        span.textContent = seg.text;
+        el.appendChild(span);
+      } else {
+        const wordEl = document.createElement('span');
+        wordEl.className = 'word';
+        for (const s of seg.segments){
+          if (s.type === 'element'){
+            const tile = document.createElement('span');
+            tile.className = 'tile';
+            tile.title = s.name + ' (' + s.symbol + ')';
+            const numEl = document.createElement('span');
+            numEl.className = 'tile-num';
+            numEl.textContent = s.num;
+            const symEl = document.createElement('span');
+            symEl.className = 'tile-sym';
+            symEl.textContent = s.symbol;
+            tile.appendChild(numEl);
+            tile.appendChild(symEl);
+            wordEl.appendChild(tile);
+          } else {
+            const raw = document.createElement('span');
+            raw.className = 'raw';
+            raw.textContent = s.text;
+            wordEl.appendChild(raw);
+          }
+        }
+        el.appendChild(wordEl);
       }
+    }
+
+    if (lineObj.time !== null){
+      el.addEventListener('click', () => seekTo(lineObj.time));
+      el.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); seekTo(lineObj.time); }
+      });
+    }
+    return el;
+  }
+
+  function renderLyrics(lines){
+    lyricsStream.innerHTML = '';
+    const frag = document.createDocumentFragment();
+    lines.forEach((line, idx) => frag.appendChild(buildLineElement(line, idx)));
+    lyricsStream.appendChild(frag);
+    emptyState.hidden = true;
+    lyricsViewport.scrollTop = 0;
+  }
+
+  /* =========================================================
+     LRCLIB
+     ========================================================= */
+  const LRCLIB_BASE = 'https://lrclib.net/api';
+
+  async function searchLRCLIB(query){
+    const url = LRCLIB_BASE + '/search?q=' + encodeURIComponent(query);
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('LRCLIB search failed (' + res.status + ')');
+    return res.json();
+  }
+
+  async function getLRCLIBById(id){
+    const url = LRCLIB_BASE + '/get/' + encodeURIComponent(id);
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('LRCLIB fetch failed (' + res.status + ')');
+    return res.json();
+  }
+
+  /* =========================================================
+     Modal: search results
+     ========================================================= */
+  const modalOverlay = document.getElementById('modalOverlay');
+  const modalTitle = document.getElementById('modalTitle');
+  const modalBody = document.getElementById('modalBody');
+  const modalClose = document.getElementById('modalClose');
+
+  function openModal(){ modalOverlay.hidden = false; }
+  function closeModal(){ modalOverlay.hidden = true; modalBody.innerHTML = ''; }
+  modalClose.addEventListener('click', closeModal);
+  modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay) closeModal(); });
+
+  function durLabel(sec){
+    if (!sec && sec !== 0) return '';
+    return formatTime(sec);
+  }
+
+  function renderResults(tracks, query){
+    modalTitle.textContent = tracks.length ? 'Select a match for "' + query + '"' : 'No matches';
+    modalBody.innerHTML = '';
+    if (!tracks.length){
+      const p = document.createElement('div');
+      p.className = 'modal-status';
+      p.textContent = 'Nothing found on LRCLIB for that search. Try a different spelling, or add the artist name.';
+      modalBody.appendChild(p);
+      return;
+    }
+    for (const t of tracks){
+      const item = document.createElement('div');
+      item.className = 'result-item';
+
+      const main = document.createElement('div');
+      main.className = 'result-main';
+      const title = document.createElement('div');
+      title.className = 'result-title';
+      title.textContent = t.trackName || '(untitled)';
+      const sub = document.createElement('div');
+      sub.className = 'result-sub';
+      sub.textContent = [t.artistName, t.albumName].filter(Boolean).join(' — ');
+      main.appendChild(title);
+      main.appendChild(sub);
+
+      const dur = document.createElement('div');
+      dur.className = 'result-dur';
+      dur.textContent = durLabel(t.duration);
+
+      const badge = document.createElement('div');
+      const hasSync = !!(t.syncedLyrics && t.syncedLyrics.trim());
+      badge.className = 'result-badge ' + (hasSync ? 'synced' : 'plain');
+      badge.textContent = hasSync ? 'synced' : (t.instrumental ? 'instrumental' : 'plain');
+
+      item.appendChild(main);
+      item.appendChild(dur);
+      item.appendChild(badge);
+
+      item.addEventListener('click', () => selectTrack(t));
+      modalBody.appendChild(item);
+    }
+  }
+
+  /* =========================================================
+     Modal: link YouTube video
+     ========================================================= */
+  const ytModalOverlay = document.getElementById('ytModalOverlay');
+  const ytModalClose = document.getElementById('ytModalClose');
+  const ytSearchLink = document.getElementById('ytSearchLink');
+  const ytUrlInput = document.getElementById('ytUrlInput');
+  const ytLoadBtn = document.getElementById('ytLoadBtn');
+
+  ytModalClose.addEventListener('click', () => { ytModalOverlay.hidden = true; });
+  ytModalOverlay.addEventListener('click', (e) => { if (e.target === ytModalOverlay) ytModalOverlay.hidden = true; });
+
+  function openYTModal(track){
+    const q = [track.trackName, track.artistName].filter(Boolean).join(' ');
+    ytSearchLink.href = 'https://www.youtube.com/results?search_query=' + encodeURIComponent(q);
+    ytUrlInput.value = '';
+    ytModalOverlay.hidden = false;
+    setTimeout(() => ytUrlInput.focus(), 50);
+  }
+
+  function extractVideoId(input){
+    input = (input || '').trim();
+    if (/^[A-Za-z0-9_-]{11}$/.test(input)) return input;
+    const patterns = [
+      /[?&]v=([A-Za-z0-9_-]{11})/,
+      /youtu\.be\/([A-Za-z0-9_-]{11})/,
+      /embed\/([A-Za-z0-9_-]{11})/,
+      /shorts\/([A-Za-z0-9_-]{11})/
+    ];
+    for (const p of patterns){
+      const m = input.match(p);
+      if (m) return m[1];
+    }
+    return null;
+  }
+
+  ytLoadBtn.addEventListener('click', () => {
+    const id = extractVideoId(ytUrlInput.value);
+    if (!id){
+      ytUrlInput.style.borderColor = 'var(--danger)';
+      ytUrlInput.placeholder = "Couldn't read a video ID — paste the full YouTube link";
+      return;
+    }
+    ytModalOverlay.hidden = true;
+    loadYouTubeVideo(id);
+  });
+
+  /* =========================================================
+     Track selection flow
+     ========================================================= */
+  let currentLines = [];
+  let lastActiveIndex = -1;
+
+  async function selectTrack(track){
+    closeModal();
+    let lrcText = track.syncedLyrics;
+    let plainText = track.plainLyrics;
+
+    if ((!lrcText || !lrcText.trim()) && track.id){
+      try {
+        const full = await getLRCLIBById(track.id);
+        lrcText = full.syncedLyrics;
+        plainText = full.plainLyrics;
+      } catch (e){ /* fall through to plain / instrumental handling */ }
+    }
+
+    let lines;
+    if (lrcText && lrcText.trim()){
+      lines = parseLRC(lrcText);
+    } else if (plainText && plainText.trim()){
+      lines = plainText.split(/\r?\n/).filter(l => l.trim()).map(text => ({ time: null, text }));
+    } else {
+      lines = [{ time: null, text: track.instrumental ? '(instrumental)' : '(no lyrics available)' }];
+    }
+
+    currentLines = lines;
+    lastActiveIndex = -1;
+    renderLyrics(lines);
+
+    const npTitle = document.getElementById('npTitle');
+    const npArtist = document.getElementById('npArtist');
+    npTitle.textContent = track.trackName || '';
+    npArtist.textContent = track.artistName || '';
+    document.getElementById('nowPlaying').hidden = false;
+
+    openYTModal(track);
+  }
+
+  /* =========================================================
+     Search bar
+     ========================================================= */
+  const searchForm = document.getElementById('searchForm');
+  const searchInput = document.getElementById('searchInput');
+  const searchBtn = document.getElementById('searchBtn');
+
+  searchForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const q = searchInput.value.trim();
+    if (!q) return;
+    searchBtn.disabled = true;
+    searchBtn.textContent = 'Searching…';
+    modalTitle.textContent = 'Searching…';
+    modalBody.innerHTML = '<div class="modal-status">Querying LRCLIB…</div>';
+    openModal();
+    try {
+      const results = await searchLRCLIB(q);
+      renderResults(results.slice(0, 20), q);
+    } catch (err){
+      modalTitle.textContent = 'Search failed';
+      modalBody.innerHTML = '<div class="modal-status">Could not reach LRCLIB. Check your connection and try again.</div>';
+    } finally {
+      searchBtn.disabled = false;
+      searchBtn.textContent = 'Search & Play';
+    }
+  });
+
+  /* =========================================================
+     YouTube IFrame Player
+     ========================================================= */
+  let ytApiReady = false;
+  let player = null;
+  let pendingVideoId = null;
+  let playerReadyOnce = false;
+
+  window.onYouTubeIframeAPIReady = function(){
+    ytApiReady = true;
+    player = new YT.Player('ytPlayer', {
+      height: '2', width: '2',
+      playerVars: { autoplay: 1, controls: 0, disablekb: 1, modestbranding: 1, rel: 0, playsinline: 1 },
+      events: { onReady: onPlayerReady, onStateChange: onPlayerStateChange }
     });
-  </script>
+  };
+
+  function onPlayerReady(){
+    playerReadyOnce = true;
+    if (pendingVideoId){
+      player.loadVideoById(pendingVideoId);
+      pendingVideoId = null;
+    }
+  }
+
+  function onPlayerStateChange(e){
+    const playBtn = document.getElementById('playBtn');
+    if (e.data === YT.PlayerState.PLAYING){
+      playBtn.textContent = '⏸';
+      playBtn.setAttribute('aria-label', 'Pause');
+    } else if (e.data === YT.PlayerState.PAUSED || e.data === YT.PlayerState.ENDED){
+      playBtn.textContent = '▶';
+      playBtn.setAttribute('aria-label', 'Play');
+    }
+  }
+
+  function loadYouTubeVideo(videoId){
+    document.getElementById('playerBar').hidden = false;
+    if (!ytApiReady || !player || !playerReadyOnce){
+      pendingVideoId = videoId;
+      return;
+    }
+    player.loadVideoById(videoId);
+  }
+
+  function seekTo(seconds){
+    if (player && playerReadyOnce && typeof player.seekTo === 'function'){
+      player.seekTo(seconds, true);
+      if (player.getPlayerState() !== YT.PlayerState.PLAYING) player.playVideo();
+    }
+  }
+
+  /* ---- transport controls ---- */
+  const playBtn = document.getElementById('playBtn');
+  const scrub = document.getElementById('scrub');
+  const timeCurrent = document.getElementById('timeCurrent');
+  const timeTotal = document.getElementById('timeTotal');
+  let scrubbing = false;
+
+  playBtn.addEventListener('click', () => {
+    if (!player || !playerReadyOnce) return;
+    const state = player.getPlayerState();
+    if (state === YT.PlayerState.PLAYING) player.pauseVideo();
+    else player.playVideo();
+  });
+
+  scrub.addEventListener('input', () => { scrubbing = true; });
+  scrub.addEventListener('change', () => {
+    if (!player || !playerReadyOnce) return;
+    const duration = player.getDuration() || 0;
+    const target = (scrub.value / 1000) * duration;
+    player.seekTo(target, true);
+    scrubbing = false;
+  });
+
+  function updateActiveLine(currentTime){
+    if (!currentLines.length) return;
+    let idx = -1;
+    for (let i = 0; i < currentLines.length; i++){
+      if (currentLines[i].time !== null && currentLines[i].time <= currentTime) idx = i;
+      else if (currentLines[i].time !== null) break;
+    }
+    if (idx === lastActiveIndex) return;
+    lastActiveIndex = idx;
+    const children = lyricsStream.children;
+    for (const child of children) child.classList.remove('active');
+    if (idx >= 0 && children[idx]){
+      children[idx].classList.add('active');
+      children[idx].scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }
+
+  setInterval(() => {
+    if (!player || !playerReadyOnce || typeof player.getCurrentTime !== 'function') return;
+    let current = 0, duration = 0;
+    try {
+      current = player.getCurrentTime() || 0;
+      duration = player.getDuration() || 0;
+    } catch (e){ return; }
+
+    timeCurrent.textContent = formatTime(current);
+    timeTotal.textContent = formatTime(duration);
+    if (!scrubbing && duration > 0){
+      scrub.value = String(Math.round((current / duration) * 1000));
+    }
+    updateActiveLine(current);
+  }, 250);
+
+  /* ---- escape key closes any open modal ---- */
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    if (!modalOverlay.hidden) closeModal();
+    if (!ytModalOverlay.hidden) ytModalOverlay.hidden = true;
+  });
+
+})();
+</script>
 </body>
 </html>
