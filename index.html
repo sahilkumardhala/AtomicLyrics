@@ -28,7 +28,7 @@
     --font-display:'Fraunces', serif;
     --font-body:'Inter', sans-serif;
     --font-mono:'JetBrains Mono', monospace;
-    --dock-h:132px;
+    --dock-h:150px;
   }
 
   *{box-sizing:border-box;}
@@ -46,11 +46,7 @@
   }
   ::selection{ background:var(--teal-deep); color:var(--ink); }
 
-  .app{
-    height:100dvh;
-    display:flex;
-    flex-direction:column;
-  }
+  .app{ height:100dvh; display:flex; flex-direction:column; }
 
   /* ---------- header ---------- */
   .app-header{
@@ -84,10 +80,7 @@
     margin:0; font-family:var(--font-display); font-weight:600;
     font-size:21px; letter-spacing:0.2px; color:var(--ink);
   }
-  .brand-text p{
-    margin:1px 0 0; font-size:11.5px; color:var(--ink-dim);
-    letter-spacing:0.3px;
-  }
+  .brand-text p{ margin:1px 0 0; font-size:11.5px; color:var(--ink-dim); letter-spacing:0.3px; }
   .now-playing{
     font-family:var(--font-mono); font-size:12px; color:var(--teal);
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
@@ -114,46 +107,26 @@
   .lyrics-viewport::-webkit-scrollbar-thumb{ background:var(--hairline); border-radius:4px; }
 
   .empty-state{
-    max-width:420px;
-    margin:8vh auto 0;
-    text-align:center;
-    color:var(--ink-dim);
+    max-width:420px; margin:8vh auto 0; text-align:center; color:var(--ink-dim);
     display:flex; flex-direction:column; align-items:center; gap:18px;
   }
   .empty-tile{
-    width:64px; height:64px;
-    border:2px dashed var(--hairline);
-    border-radius:var(--radius-md);
+    width:64px; height:64px; border:2px dashed var(--hairline); border-radius:var(--radius-md);
     display:flex; flex-direction:column; align-items:center; justify-content:center;
-    gap:2px;
-    color:var(--ink-faint);
+    gap:2px; color:var(--ink-faint);
   }
   .empty-tile .tile-num{ font-size:9px; font-family:var(--font-mono); }
   .empty-tile .tile-sym{ font-size:22px; font-family:var(--font-mono); font-weight:700; }
   .empty-state p{ margin:0; font-size:14.5px; line-height:1.6; }
   .empty-state .hint-sub{ font-size:12px; color:var(--ink-faint); }
 
-  .lyrics-stream{
-    max-width:760px;
-    margin:0 auto;
-    display:flex;
-    flex-direction:column;
-    gap:2px;
-  }
+  .lyrics-stream{ max-width:760px; margin:0 auto; display:flex; flex-direction:column; gap:2px; }
 
   .lyric-line{
-    padding:9px 16px;
-    border-radius:var(--radius-md);
-    cursor:pointer;
-    display:flex;
-    flex-wrap:wrap;
-    align-items:baseline;
-    gap:0;
-    row-gap:6px;
-    line-height:1.5;
-    transition:background-color .25s ease, opacity .25s ease;
-    opacity:0.42;
-    outline:none;
+    padding:9px 16px; border-radius:var(--radius-md); cursor:pointer;
+    display:flex; flex-wrap:wrap; align-items:baseline; gap:0; row-gap:6px;
+    line-height:1.5; transition:background-color .25s ease, opacity .25s ease;
+    opacity:0.42; outline:none;
   }
   .lyric-line:hover{ background:rgba(255,255,255,0.035); opacity:0.75; }
   .lyric-line:focus-visible{ box-shadow:0 0 0 2px var(--teal); opacity:0.9; }
@@ -166,37 +139,17 @@
   .lyric-line.no-sync{ cursor:default; }
 
   .word{ display:inline-flex; align-items:baseline; margin:0 5px 0 0; }
-  .raw{
-    font-family:var(--font-body);
-    color:var(--ink-dim);
-    font-size:15px;
-    white-space:pre-wrap;
-  }
+  .raw{ font-family:var(--font-body); color:var(--ink-dim); font-size:15px; white-space:pre-wrap; }
   .lyric-line .raw{ align-self:center; }
 
   .tile{
-    position:relative;
-    display:inline-flex;
-    flex-direction:column;
-    align-items:center;
-    justify-content:center;
-    width:30px; height:30px;
-    margin:0 1.5px;
-    border:1.5px solid var(--hairline);
-    border-radius:5px;
-    background:var(--panel-raised);
-    transition:border-color .2s ease, transform .15s ease;
+    position:relative; display:inline-flex; flex-direction:column; align-items:center; justify-content:center;
+    width:30px; height:30px; margin:0 1.5px; border:1.5px solid var(--hairline); border-radius:5px;
+    background:var(--panel-raised); transition:border-color .2s ease, transform .15s ease;
   }
   .lyric-line:hover .tile{ transform:translateY(-1px); }
-  .tile .tile-num{
-    position:absolute; top:2px; left:3px;
-    font-family:var(--font-mono); font-size:6px; color:var(--brass);
-    letter-spacing:0.2px;
-  }
-  .tile .tile-sym{
-    font-family:var(--font-mono); font-weight:700; font-size:13px;
-    color:var(--ink); line-height:1; margin-top:2px;
-  }
+  .tile .tile-num{ position:absolute; top:2px; left:3px; font-family:var(--font-mono); font-size:6px; color:var(--brass); letter-spacing:0.2px; }
+  .tile .tile-sym{ font-family:var(--font-mono); font-weight:700; font-size:13px; color:var(--ink); line-height:1; margin-top:2px; }
 
   /* ---------- dock ---------- */
   .dock{
@@ -204,172 +157,59 @@
     border-top:1px solid var(--hairline);
     background:linear-gradient(180deg, rgba(14,20,28,0), var(--bg-deep) 30%);
     padding:12px 18px calc(14px + env(safe-area-inset-bottom));
-    display:flex;
-    flex-direction:column;
-    gap:10px;
+    display:flex; flex-direction:column; gap:8px;
   }
-  .player-bar{
-    display:flex;
-    align-items:center;
-    gap:12px;
-    max-width:760px;
-    width:100%;
-    margin:0 auto;
-  }
+  .player-bar{ display:flex; align-items:center; gap:12px; max-width:760px; width:100%; margin:0 auto; }
   .play-btn{
-    flex:0 0 auto;
-    width:38px; height:38px;
-    border-radius:50%;
-    border:1.5px solid var(--brass);
-    background:rgba(212,162,76,0.08);
-    color:var(--brass);
-    font-size:14px;
-    cursor:pointer;
-    display:flex; align-items:center; justify-content:center;
+    flex:0 0 auto; width:38px; height:38px; border-radius:50%;
+    border:1.5px solid var(--brass); background:rgba(212,162,76,0.08); color:var(--brass);
+    font-size:14px; cursor:pointer; display:flex; align-items:center; justify-content:center;
     transition:background .2s ease, transform .1s ease;
   }
   .play-btn:hover{ background:rgba(212,162,76,0.18); }
   .play-btn:active{ transform:scale(0.94); }
-  .time{
-    font-family:var(--font-mono); font-size:11.5px; color:var(--ink-dim);
-    flex:0 0 auto; min-width:38px; text-align:center;
-  }
-  .scrub{
-    -webkit-appearance:none; appearance:none;
-    flex:1 1 auto;
-    height:3px;
-    border-radius:3px;
-    background:var(--hairline);
-    outline:none;
-    cursor:pointer;
-  }
+  .play-btn:disabled{ opacity:0.4; cursor:default; }
+  .time{ font-family:var(--font-mono); font-size:11.5px; color:var(--ink-dim); flex:0 0 auto; min-width:38px; text-align:center; }
+  .scrub{ -webkit-appearance:none; appearance:none; flex:1 1 auto; height:3px; border-radius:3px; background:var(--hairline); outline:none; cursor:pointer; }
   .scrub::-webkit-slider-thumb{
-    -webkit-appearance:none; appearance:none;
-    width:12px; height:12px; border-radius:50%;
-    background:var(--teal);
-    border:2px solid var(--bg-deep);
-    margin-top:-4.5px;
-    cursor:pointer;
+    -webkit-appearance:none; appearance:none; width:12px; height:12px; border-radius:50%;
+    background:var(--teal); border:2px solid var(--bg-deep); margin-top:-4.5px; cursor:pointer;
   }
-  .scrub::-moz-range-thumb{
-    width:10px; height:10px; border-radius:50%;
-    background:var(--teal); border:2px solid var(--bg-deep); cursor:pointer;
-  }
+  .scrub::-moz-range-thumb{ width:10px; height:10px; border-radius:50%; background:var(--teal); border:2px solid var(--bg-deep); cursor:pointer; }
   .scrub::-webkit-slider-runnable-track{ height:3px; border-radius:3px; background:var(--hairline); }
 
-  .search-bar{
-    display:flex; gap:8px;
-    max-width:760px; width:100%; margin:0 auto;
-  }
+  .search-row{ display:flex; flex-direction:column; gap:6px; max-width:760px; width:100%; margin:0 auto; }
+  .search-bar{ display:flex; gap:8px; width:100%; }
   .search-bar input{
-    flex:1 1 auto;
-    background:var(--panel);
-    border:1.5px solid var(--hairline);
-    border-radius:100px;
-    padding:11px 18px;
-    color:var(--ink);
-    font-family:var(--font-body);
-    font-size:14px;
-    outline:none;
+    flex:1 1 auto; background:var(--panel); border:1.5px solid var(--hairline); border-radius:100px;
+    padding:11px 18px; color:var(--ink); font-family:var(--font-body); font-size:14px; outline:none;
     transition:border-color .2s ease;
   }
   .search-bar input::placeholder{ color:var(--ink-faint); }
   .search-bar input:focus{ border-color:var(--teal-deep); }
   .search-bar button{
-    flex:0 0 auto;
-    background:var(--brass);
-    color:#20180a;
-    border:none;
-    border-radius:100px;
-    padding:0 20px;
-    font-family:var(--font-body);
-    font-weight:600;
-    font-size:13.5px;
-    cursor:pointer;
-    letter-spacing:0.2px;
-    transition:filter .15s ease, transform .1s ease;
+    flex:0 0 auto; background:var(--brass); color:#20180a; border:none; border-radius:100px;
+    padding:0 20px; font-family:var(--font-body); font-weight:600; font-size:13.5px; cursor:pointer;
+    letter-spacing:0.2px; transition:filter .15s ease, transform .1s ease;
   }
   .search-bar button:hover{ filter:brightness(1.08); }
   .search-bar button:active{ transform:scale(0.97); }
   .search-bar button:disabled{ opacity:0.55; cursor:progress; }
 
+  .search-status{
+    display:flex; align-items:center; gap:8px;
+    font-family:var(--font-mono); font-size:11.5px; color:var(--ink-dim);
+    padding:0 18px; min-height:16px;
+  }
+  .search-status.error{ color:var(--danger); }
+  .search-status .dot{
+    width:6px; height:6px; border-radius:50%; background:var(--teal); flex:0 0 auto;
+    animation:pulse 1.1s ease-in-out infinite;
+  }
+  .search-status.error .dot{ background:var(--danger); animation:none; }
+  @keyframes pulse{ 0%,100%{ opacity:0.35; } 50%{ opacity:1; } }
+
   .yt-holder{ position:fixed; bottom:2px; right:2px; width:2px; height:2px; overflow:hidden; opacity:0.001; pointer-events:none; }
-
-  /* ---------- modals ---------- */
-  .modal-overlay{
-    position:fixed; inset:0;
-    background:rgba(6,9,13,0.72);
-    backdrop-filter:blur(3px);
-    display:flex; align-items:center; justify-content:center;
-    z-index:50;
-    padding:20px;
-  }
-  .modal{
-    width:100%; max-width:520px;
-    max-height:78vh;
-    background:var(--panel);
-    border:1px solid var(--hairline);
-    border-radius:var(--radius-lg);
-    display:flex; flex-direction:column;
-    overflow:hidden;
-    box-shadow:0 30px 80px rgba(0,0,0,0.5);
-  }
-  .modal-head{
-    display:flex; align-items:center; justify-content:space-between;
-    padding:18px 20px 12px;
-    border-bottom:1px solid var(--hairline);
-    flex:0 0 auto;
-  }
-  .modal-head h2{
-    margin:0; font-family:var(--font-display); font-weight:600; font-size:18px;
-  }
-  .modal-close{
-    background:none; border:none; color:var(--ink-dim); font-size:22px;
-    cursor:pointer; line-height:1; padding:2px 6px;
-  }
-  .modal-close:hover{ color:var(--ink); }
-  .modal-body{ padding:14px 20px 20px; overflow-y:auto; }
-
-  .result-item{
-    display:flex; align-items:center; gap:12px;
-    padding:11px 12px;
-    border-radius:var(--radius-sm);
-    cursor:pointer;
-    border:1px solid transparent;
-    transition:background .15s ease, border-color .15s ease;
-  }
-  .result-item:hover{ background:var(--panel-raised); border-color:var(--hairline); }
-  .result-main{ flex:1 1 auto; min-width:0; }
-  .result-title{ font-size:14.5px; font-weight:600; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .result-sub{ font-size:12.5px; color:var(--ink-dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:1px; }
-  .result-badge{
-    flex:0 0 auto; font-family:var(--font-mono); font-size:9.5px;
-    padding:3px 7px; border-radius:100px; letter-spacing:0.3px;
-  }
-  .result-badge.synced{ color:var(--teal); border:1px solid var(--teal-deep); background:rgba(94,234,212,0.06); }
-  .result-badge.plain{ color:var(--ink-faint); border:1px solid var(--hairline); }
-  .result-dur{ font-family:var(--font-mono); font-size:11.5px; color:var(--ink-faint); flex:0 0 auto; }
-  .modal-status{ color:var(--ink-dim); font-size:14px; padding:20px 4px; text-align:center; }
-
-  .modal-hint{ font-size:13px; color:var(--ink-dim); line-height:1.6; margin:0 0 14px; }
-  .yt-search-link{
-    display:inline-block; margin-bottom:16px;
-    color:var(--teal); font-size:13px; text-decoration:none;
-    border-bottom:1px solid var(--teal-deep); padding-bottom:1px;
-  }
-  .yt-search-link:hover{ color:var(--ink); }
-  #ytUrlInput{
-    width:100%; background:var(--panel-raised); border:1.5px solid var(--hairline);
-    border-radius:var(--radius-sm); padding:11px 14px; color:var(--ink);
-    font-family:var(--font-mono); font-size:13px; outline:none; margin-bottom:12px;
-  }
-  #ytUrlInput:focus{ border-color:var(--teal-deep); }
-  #ytLoadBtn{
-    width:100%; background:var(--teal); color:#062420; border:none;
-    border-radius:var(--radius-sm); padding:12px; font-weight:600; font-size:14px;
-    cursor:pointer; font-family:var(--font-body);
-  }
-  #ytLoadBtn:hover{ filter:brightness(1.06); }
 
   [hidden]{ display:none !important; }
 
@@ -409,7 +249,7 @@
   <main class="lyrics-viewport" id="lyricsViewport">
     <div class="empty-state" id="emptyState">
       <div class="empty-tile"><span class="tile-num">0</span><span class="tile-sym">?</span></div>
-      <p>Search a track below. Every line gets rebuilt from element symbols — the ones that don't fit stay in plain type.</p>
+      <p>Search a track below. Lyrics and audio load automatically — every line gets rebuilt from element symbols, and whatever doesn't fit stays in plain type.</p>
       <p class="hint-sub">Try "Because — The Beatles" for a clean run of tiles.</p>
     </div>
     <div class="lyrics-stream" id="lyricsStream"></div>
@@ -422,39 +262,17 @@
       <input type="range" class="scrub" id="scrub" min="0" max="1000" value="0" aria-label="Seek">
       <span class="time" id="timeTotal">00:00</span>
     </div>
-    <form class="search-bar" id="searchForm">
-      <input type="text" id="searchInput" placeholder="Search a track — title, artist, or both" autocomplete="off">
-      <button type="submit" id="searchBtn">Search &amp; Play</button>
-    </form>
+    <div class="search-row">
+      <form class="search-bar" id="searchForm">
+        <input type="text" id="searchInput" placeholder="Search a track — title, artist, or both" autocomplete="off">
+        <button type="submit" id="searchBtn">Search &amp; Play</button>
+      </form>
+      <div class="search-status" id="searchStatus"></div>
+    </div>
   </footer>
 </div>
 
 <div class="yt-holder"><div id="ytPlayer"></div></div>
-
-<div class="modal-overlay" id="modalOverlay" hidden>
-  <div class="modal">
-    <div class="modal-head">
-      <h2 id="modalTitle">Select a match</h2>
-      <button class="modal-close" id="modalClose" aria-label="Close">×</button>
-    </div>
-    <div class="modal-body" id="modalBody"></div>
-  </div>
-</div>
-
-<div class="modal-overlay" id="ytModalOverlay" hidden>
-  <div class="modal">
-    <div class="modal-head">
-      <h2>Link the recording</h2>
-      <button class="modal-close" id="ytModalClose" aria-label="Close">×</button>
-    </div>
-    <div class="modal-body">
-      <p class="modal-hint">Lyrics come from LRCLIB; audio streams through the official YouTube player. Find the recording, then paste its link below.</p>
-      <a id="ytSearchLink" class="yt-search-link" href="#" target="_blank" rel="noopener">Search YouTube for this track ↗</a>
-      <input type="text" id="ytUrlInput" placeholder="Paste a YouTube link or video ID">
-      <button id="ytLoadBtn" type="button">Load &amp; Play</button>
-    </div>
-  </div>
-</div>
 
 <script src="https://www.youtube.com/iframe_api"></script>
 <script>
@@ -684,122 +502,67 @@
     return res.json();
   }
 
+  function pickBestTrack(tracks){
+    if (!tracks || !tracks.length) return null;
+    const synced = tracks.find(t => t.syncedLyrics && t.syncedLyrics.trim());
+    return synced || tracks[0];
+  }
+
   /* =========================================================
-     Modal: search results
+     Automatic YouTube resolution (audio only, via IFrame Player)
+     No manual video ID entry — a video is picked automatically
+     from public search mirrors and streamed through the official
+     YouTube IFrame API, visually hidden so only audio plays.
      ========================================================= */
-  const modalOverlay = document.getElementById('modalOverlay');
-  const modalTitle = document.getElementById('modalTitle');
-  const modalBody = document.getElementById('modalBody');
-  const modalClose = document.getElementById('modalClose');
+  const INVIDIOUS_INSTANCES = [
+    'https://yewtu.be',
+    'https://inv.nadeko.net',
+    'https://invidious.nerdvpn.de',
+    'https://iv.ggtyler.dev',
+    'https://invidious.jing.rocks',
+    'https://invidious.privacyredirect.com'
+  ];
 
-  function openModal(){ modalOverlay.hidden = false; }
-  function closeModal(){ modalOverlay.hidden = true; modalBody.innerHTML = ''; }
-  modalClose.addEventListener('click', closeModal);
-  modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay) closeModal(); });
-
-  function durLabel(sec){
-    if (!sec && sec !== 0) return '';
-    return formatTime(sec);
+  function fetchWithTimeout(url, ms){
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), ms);
+    return fetch(url, { signal: controller.signal }).finally(() => clearTimeout(timer));
   }
 
-  function renderResults(tracks, query){
-    modalTitle.textContent = tracks.length ? 'Select a match for "' + query + '"' : 'No matches';
-    modalBody.innerHTML = '';
-    if (!tracks.length){
-      const p = document.createElement('div');
-      p.className = 'modal-status';
-      p.textContent = 'Nothing found on LRCLIB for that search. Try a different spelling, or add the artist name.';
-      modalBody.appendChild(p);
-      return;
-    }
-    for (const t of tracks){
-      const item = document.createElement('div');
-      item.className = 'result-item';
-
-      const main = document.createElement('div');
-      main.className = 'result-main';
-      const title = document.createElement('div');
-      title.className = 'result-title';
-      title.textContent = t.trackName || '(untitled)';
-      const sub = document.createElement('div');
-      sub.className = 'result-sub';
-      sub.textContent = [t.artistName, t.albumName].filter(Boolean).join(' — ');
-      main.appendChild(title);
-      main.appendChild(sub);
-
-      const dur = document.createElement('div');
-      dur.className = 'result-dur';
-      dur.textContent = durLabel(t.duration);
-
-      const badge = document.createElement('div');
-      const hasSync = !!(t.syncedLyrics && t.syncedLyrics.trim());
-      badge.className = 'result-badge ' + (hasSync ? 'synced' : 'plain');
-      badge.textContent = hasSync ? 'synced' : (t.instrumental ? 'instrumental' : 'plain');
-
-      item.appendChild(main);
-      item.appendChild(dur);
-      item.appendChild(badge);
-
-      item.addEventListener('click', () => selectTrack(t));
-      modalBody.appendChild(item);
+  async function findYouTubeVideoId(query){
+    const attempts = INVIDIOUS_INSTANCES.map(async (base) => {
+      const url = base + '/api/v1/search?q=' + encodeURIComponent(query) + '&type=video';
+      const res = await fetchWithTimeout(url, 5000);
+      if (!res.ok) throw new Error('bad status');
+      const data = await res.json();
+      const hit = Array.isArray(data) ? data.find(v => v.videoId) : null;
+      if (!hit) throw new Error('no results');
+      return hit.videoId;
+    });
+    try {
+      return await Promise.any(attempts);
+    } catch (e){
+      return null;
     }
   }
 
   /* =========================================================
-     Modal: link YouTube video
+     Inline status line (replaces any blocking loading screen)
      ========================================================= */
-  const ytModalOverlay = document.getElementById('ytModalOverlay');
-  const ytModalClose = document.getElementById('ytModalClose');
-  const ytSearchLink = document.getElementById('ytSearchLink');
-  const ytUrlInput = document.getElementById('ytUrlInput');
-  const ytLoadBtn = document.getElementById('ytLoadBtn');
-
-  ytModalClose.addEventListener('click', () => { ytModalOverlay.hidden = true; });
-  ytModalOverlay.addEventListener('click', (e) => { if (e.target === ytModalOverlay) ytModalOverlay.hidden = true; });
-
-  function openYTModal(track){
-    const q = [track.trackName, track.artistName].filter(Boolean).join(' ');
-    ytSearchLink.href = 'https://www.youtube.com/results?search_query=' + encodeURIComponent(q);
-    ytUrlInput.value = '';
-    ytModalOverlay.hidden = false;
-    setTimeout(() => ytUrlInput.focus(), 50);
+  const searchStatus = document.getElementById('searchStatus');
+  function setStatus(text, mode){
+    if (!text){ searchStatus.innerHTML = ''; return; }
+    searchStatus.className = 'search-status' + (mode === 'error' ? ' error' : '');
+    searchStatus.innerHTML = (mode === 'error' ? '' : '<span class="dot"></span>') + '<span>' + text + '</span>';
   }
-
-  function extractVideoId(input){
-    input = (input || '').trim();
-    if (/^[A-Za-z0-9_-]{11}$/.test(input)) return input;
-    const patterns = [
-      /[?&]v=([A-Za-z0-9_-]{11})/,
-      /youtu\.be\/([A-Za-z0-9_-]{11})/,
-      /embed\/([A-Za-z0-9_-]{11})/,
-      /shorts\/([A-Za-z0-9_-]{11})/
-    ];
-    for (const p of patterns){
-      const m = input.match(p);
-      if (m) return m[1];
-    }
-    return null;
-  }
-
-  ytLoadBtn.addEventListener('click', () => {
-    const id = extractVideoId(ytUrlInput.value);
-    if (!id){
-      ytUrlInput.style.borderColor = 'var(--danger)';
-      ytUrlInput.placeholder = "Couldn't read a video ID — paste the full YouTube link";
-      return;
-    }
-    ytModalOverlay.hidden = true;
-    loadYouTubeVideo(id);
-  });
 
   /* =========================================================
-     Track selection flow
+     Track selection flow (fully automatic — no picker, no prompts)
      ========================================================= */
   let currentLines = [];
   let lastActiveIndex = -1;
 
-  async function selectTrack(track){
-    closeModal();
+  async function loadTrack(track){
     let lrcText = track.syncedLyrics;
     let plainText = track.plainLyrics;
 
@@ -824,13 +587,19 @@
     lastActiveIndex = -1;
     renderLyrics(lines);
 
-    const npTitle = document.getElementById('npTitle');
-    const npArtist = document.getElementById('npArtist');
-    npTitle.textContent = track.trackName || '';
-    npArtist.textContent = track.artistName || '';
+    document.getElementById('npTitle').textContent = track.trackName || '';
+    document.getElementById('npArtist').textContent = track.artistName || '';
     document.getElementById('nowPlaying').hidden = false;
 
-    openYTModal(track);
+    setStatus('Finding the recording…');
+    const query = [track.trackName, track.artistName].filter(Boolean).join(' ');
+    const videoId = await findYouTubeVideoId(query);
+    if (videoId){
+      loadYouTubeVideo(videoId);
+      setStatus('');
+    } else {
+      setStatus('Lyrics loaded, but the recording couldn\u2019t be found automatically — try adding the artist name.', 'error');
+    }
   }
 
   /* =========================================================
@@ -846,15 +615,17 @@
     if (!q) return;
     searchBtn.disabled = true;
     searchBtn.textContent = 'Searching…';
-    modalTitle.textContent = 'Searching…';
-    modalBody.innerHTML = '<div class="modal-status">Querying LRCLIB…</div>';
-    openModal();
+    setStatus('Searching lyrics…');
     try {
       const results = await searchLRCLIB(q);
-      renderResults(results.slice(0, 20), q);
+      const best = pickBestTrack(results);
+      if (!best){
+        setStatus('No lyrics found for that search. Try a different spelling, or add the artist name.', 'error');
+        return;
+      }
+      await loadTrack(best);
     } catch (err){
-      modalTitle.textContent = 'Search failed';
-      modalBody.innerHTML = '<div class="modal-status">Could not reach LRCLIB. Check your connection and try again.</div>';
+      setStatus('Could not reach LRCLIB. Check your connection and try again.', 'error');
     } finally {
       searchBtn.disabled = false;
       searchBtn.textContent = 'Search & Play';
@@ -862,7 +633,7 @@
   });
 
   /* =========================================================
-     YouTube IFrame Player
+     YouTube IFrame Player — hidden, audio only
      ========================================================= */
   let ytApiReady = false;
   let player = null;
@@ -880,6 +651,7 @@
 
   function onPlayerReady(){
     playerReadyOnce = true;
+    document.getElementById('playBtn').disabled = false;
     if (pendingVideoId){
       player.loadVideoById(pendingVideoId);
       pendingVideoId = null;
@@ -968,13 +740,6 @@
     }
     updateActiveLine(current);
   }, 250);
-
-  /* ---- escape key closes any open modal ---- */
-  document.addEventListener('keydown', (e) => {
-    if (e.key !== 'Escape') return;
-    if (!modalOverlay.hidden) closeModal();
-    if (!ytModalOverlay.hidden) ytModalOverlay.hidden = true;
-  });
 
 })();
 </script>
