@@ -9,6 +9,7 @@
       --bg: #090e17;
       --card-bg: #111927;
       --accent: #38bdf8;
+      --accent-hover: #0284c7;
       --border: #1e293b;
       --text: #f8fafc;
       --text-muted: #64748b;
@@ -33,7 +34,7 @@
     header {
       background: var(--card-bg);
       border-bottom: 1px solid var(--border);
-      padding: 12px 16px;
+      padding: 14px 16px;
       display: flex;
       align-items: center;
       gap: 12px;
@@ -70,34 +71,16 @@
       text-overflow: ellipsis;
     }
 
-    /* Embedded YouTube Player Container */
-    .video-viewport {
-      width: 100%;
-      height: 160px;
-      background: #000;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      border-bottom: 1px solid var(--border);
-    }
-
-    #yt-player {
-      width: 100%;
-      max-width: 480px;
-      height: 100%;
-      border: none;
-    }
-
-    /* Lyrics Display Area */
+    /* Main Scrolling Lyrics Area */
     #lyrics-viewport {
       flex: 1;
       overflow-y: auto;
-      padding: 20px 14px 170px;
+      padding: 24px 14px 190px;
       scroll-behavior: smooth;
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 14px;
+      gap: 16px;
     }
 
     .lyric-line {
@@ -185,15 +168,15 @@
       padding: 0 2px;
     }
 
-    /* Search Results Modal */
+    /* Track Selection Sheet */
     #search-results-modal {
       position: fixed;
-      top: 60px;
+      top: 70px;
       left: 50%;
       transform: translateX(-50%);
       width: calc(100% - 32px);
       max-width: 580px;
-      max-height: 320px;
+      max-height: 340px;
       background: #131d2e;
       border: 1px solid var(--accent);
       border-radius: 10px;
@@ -207,21 +190,44 @@
       padding: 12px 16px;
       border-bottom: 1px solid var(--border);
       cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 12px;
     }
 
     .result-item:hover {
       background: #1e293b;
     }
 
+    .result-thumb {
+      width: 44px;
+      height: 44px;
+      border-radius: 6px;
+      object-fit: cover;
+      background: #090e17;
+      flex-shrink: 0;
+    }
+
+    .result-info {
+      flex: 1;
+      overflow: hidden;
+    }
+
     .result-item-title {
       font-size: 0.95rem;
       font-weight: 600;
       color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .result-item-artist {
       font-size: 0.75rem;
       color: var(--accent);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     /* Bottom Control Bar & Search */
@@ -274,6 +280,11 @@
       font-weight: bold;
       transition: transform 0.15s ease;
       flex-shrink: 0;
+    }
+
+    .play-btn:hover {
+      background: #7dd3fc;
+      transform: scale(1.05);
     }
 
     .seek-slider {
@@ -338,6 +349,10 @@
       transition: background 0.2s ease;
     }
 
+    .search-btn:hover {
+      background: #7dd3fc;
+    }
+
     .status-text {
       text-align: center;
       font-size: 0.75rem;
@@ -355,17 +370,16 @@
     </div>
   </header>
 
-  <!-- YouTube Embedded Player (Full Audio & Video Playback) -->
-  <div class="video-viewport">
-    <div id="yt-player"></div>
-  </div>
-
+  <!-- Track Selection List -->
   <div id="search-results-modal"></div>
 
-  <!-- Scrolling Lyrics Container -->
+  <!-- Native HTML5 Full Audio Stream Engine -->
+  <audio id="audio-engine" preload="auto" crossorigin="anonymous"></audio>
+
+  <!-- Scrolling Lyrics Viewport -->
   <main id="lyrics-viewport">
     <p style="color: var(--text-muted); margin-top: 40px; text-align: center;">
-      Search any song to start full playback & periodic element conversion.
+      Search any song title below (e.g. "Gehra Hua", "Kesariya", "Believer")
     </p>
   </main>
 
@@ -388,7 +402,7 @@
   </footer>
 
   <script>
-    // 1. Elements Dictionary
+    // 1. Complete Periodic Table Elements Dictionary
     const ELEMENTS = {
       H: { n: 1, name: "Hydrog" }, HE: { n: 2, name: "Helium" },
       LI: { n: 3, name: "Lithium" }, BE: { n: 4, name: "Berylli" },
@@ -425,7 +439,7 @@
       PU: { n: 94, name: "Pluton" }
     };
 
-    // 2. DP Backtracking Solver for Chemical Spelling
+    // 2. DP Backtracking Solver for Chemical Decomposition
     function findOptimalDecomposition(word) {
       const memo = new Map();
 
@@ -524,12 +538,8 @@
       return result.sort((a, b) => a.time - b.time);
     }
 
-    // 4. YouTube IFrame API Setup
-    let ytPlayer = null;
-    let syncInterval = null;
-    let lyricsData = [];
-    let isUserSeeking = false;
-
+    // 4. Audio Engine & UI Controller
+    const audio = document.getElementById('audio-engine');
     const playBtn = document.getElementById('toggle-play-btn');
     const seekBar = document.getElementById('seek-bar');
     const timeDisplay = document.getElementById('time-display');
@@ -538,33 +548,8 @@
     const viewport = document.getElementById('lyrics-viewport');
     const resultsModal = document.getElementById('search-results-modal');
 
-    // Load official YouTube IFrame API
-    const ytTag = document.createElement('script');
-    ytTag.src = "https://www.youtube.com/iframe_api";
-    document.head.appendChild(ytTag);
-
-    window.onYouTubeIframeAPIReady = function() {
-      ytPlayer = new YT.Player('yt-player', {
-        playerVars: {
-          'autoplay': 1,
-          'playsinline': 1,
-          'modestbranding': 1
-        },
-        events: {
-          'onStateChange': onPlayerStateChange
-        }
-      });
-    };
-
-    function onPlayerStateChange(event) {
-      if (event.data === YT.PlayerState.PLAYING) {
-        playBtn.textContent = '⏸';
-        startSyncLoop();
-      } else {
-        playBtn.textContent = '▶';
-        clearInterval(syncInterval);
-      }
-    }
+    let lyricsData = [];
+    let isUserSeeking = false;
 
     function formatTime(seconds) {
       const mins = Math.floor(seconds / 60) || 0;
@@ -572,124 +557,149 @@
       return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
     }
 
-    function startSyncLoop() {
-      clearInterval(syncInterval);
-      syncInterval = setInterval(() => {
-        if (!ytPlayer || typeof ytPlayer.getCurrentTime !== 'function') return;
+    audio.addEventListener('play', () => { playBtn.textContent = '⏸'; });
+    audio.addEventListener('pause', () => { playBtn.textContent = '▶'; });
 
-        const currentSec = ytPlayer.getCurrentTime() || 0;
-        const duration = ytPlayer.getDuration() || 0;
+    audio.addEventListener('timeupdate', () => {
+      const currentSec = audio.currentTime;
+      const duration = audio.duration || 0;
 
-        if (!isUserSeeking && duration > 0) {
-          seekBar.value = (currentSec / duration) * 100;
-          timeDisplay.textContent = `${formatTime(currentSec)} / ${formatTime(duration)}`;
-        }
+      if (!isUserSeeking && duration > 0) {
+        seekBar.value = (currentSec / duration) * 100;
+        timeDisplay.textContent = `${formatTime(currentSec)} / ${formatTime(duration)}`;
+      }
 
-        if (lyricsData.length === 0) return;
+      if (lyricsData.length === 0) return;
 
-        lyricsData.forEach((line, idx) => {
-          const nextLine = lyricsData[idx + 1];
-          const lineElem = document.getElementById(`lyric-${idx}`);
+      lyricsData.forEach((line, idx) => {
+        const nextLine = lyricsData[idx + 1];
+        const lineElem = document.getElementById(`lyric-${idx}`);
 
-          if (currentSec >= line.time && (!nextLine || currentSec < nextLine.time)) {
-            if (lineElem && !lineElem.classList.contains('active')) {
-              document.querySelectorAll('.lyric-line').forEach(el => el.classList.remove('active'));
-              lineElem.classList.add('active');
-              lineElem.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
+        if (currentSec >= line.time && (!nextLine || currentSec < nextLine.time)) {
+          if (lineElem && !lineElem.classList.contains('active')) {
+            document.querySelectorAll('.lyric-line').forEach(el => el.classList.remove('active'));
+            lineElem.classList.add('active');
+            lineElem.scrollIntoView({ behavior: 'smooth', block: 'center' });
           }
-        });
-      }, 250);
-    }
+        }
+      });
+    });
 
-    // 5. Search Execution: LRCLIB Full-Text Search
+    // 5. Unified Track Search via JioSaavn Search API
     async function executeSearch(query) {
       statusText.textContent = `Searching for "${query}"...`;
       resultsModal.innerHTML = '';
       resultsModal.style.display = 'none';
 
       try {
-        const res = await fetch(`https://lrclib.net/api/search?q=${encodeURIComponent(query)}`);
-        const tracks = await res.json();
+        const res = await fetch(`https://saavn.dev/api/search/songs?query=${encodeURIComponent(query)}&limit=10`);
+        const data = await res.json();
+        const songs = data?.data?.results || [];
 
-        if (!tracks || tracks.length === 0) {
-          statusText.textContent = "No matches found.";
+        if (songs.length === 0) {
+          statusText.textContent = "No audio matches found.";
           return;
         }
 
         resultsModal.style.display = 'block';
-        tracks.slice(0, 6).forEach(track => {
+        songs.forEach(song => {
           const item = document.createElement('div');
           item.className = 'result-item';
+          
+          const thumb = song.image && song.image.length > 0 ? song.image[song.image.length - 1].url : '';
+          const primaryArtist = song.artists?.primary?.map(a => a.name).join(', ') || 'Various Artists';
+
           item.innerHTML = `
-            <div class="result-item-title">${track.trackName}</div>
-            <div class="result-item-artist">${track.artistName} • ${track.albumName || 'Single'} ${track.syncedLyrics ? '⚡ (Synced)' : ''}</div>
+            <img class="result-thumb" src="${thumb}" alt="art" onerror="this.style.display='none'">
+            <div class="result-info">
+              <div class="result-item-title">${song.name}</div>
+              <div class="result-item-artist">${primaryArtist} • ${song.album?.name || ''}</div>
+            </div>
           `;
+
           item.addEventListener('click', () => {
             resultsModal.style.display = 'none';
-            loadSpecificTrack(track);
+            loadSongTrack(song);
           });
+
           resultsModal.appendChild(item);
         });
 
-        statusText.textContent = `Found ${tracks.length} results. Select your song above.`;
+        statusText.textContent = "Select your song from the list above.";
       } catch (err) {
-        statusText.textContent = "Search error. Please try again.";
+        statusText.textContent = "Search connection error. Please try again.";
       }
     }
 
-    async function loadSpecificTrack(track) {
-      trackName.textContent = `${track.artistName} - ${track.trackName}`;
+    // 6. Play Track & Query Matched Lyrics
+    async function loadSongTrack(song) {
+      const primaryArtist = song.artists?.primary?.map(a => a.name).join(', ') || '';
+      const cleanTitle = song.name.replace(/\(.*?\)/g, '').replace(/\[.*?\]/g, '').trim();
+      
+      trackName.textContent = `${primaryArtist} - ${cleanTitle}`;
       viewport.innerHTML = '';
       lyricsData = [];
+      statusText.textContent = "Loading full audio stream & periodic lyrics...";
 
-      // Render Synchronized or Plain Lyrics
-      if (track.syncedLyrics) {
-        lyricsData = parseLRC(track.syncedLyrics);
-        lyricsData.forEach((line, idx) => {
-          const lineDiv = document.createElement('div');
-          lineDiv.className = 'lyric-line';
-          lineDiv.id = `lyric-${idx}`;
-          lineDiv.innerHTML = renderLineElements(line.text);
-          lineDiv.addEventListener('click', () => {
-            if (ytPlayer && ytPlayer.seekTo) {
-              ytPlayer.seekTo(line.time, true);
-              ytPlayer.playVideo();
-            }
-          });
-          viewport.appendChild(lineDiv);
+      // A. Extract High-Quality Full Audio Stream
+      const downloadList = song.downloadUrl || [];
+      const bestAudio = downloadList.find(d => d.quality === '320kbps') || 
+                        downloadList.find(d => d.quality === '160kbps') || 
+                        downloadList[downloadList.length - 1];
+
+      if (bestAudio && bestAudio.url) {
+        audio.src = bestAudio.url;
+        audio.play().catch(() => {
+          statusText.textContent = "Tap Play (▶) to begin streaming.";
         });
-        statusText.textContent = "Synced periodic lyrics active.";
-      } else if (track.plainLyrics) {
-        track.plainLyrics.split('\n').forEach(text => {
-          if (!text.trim()) return;
-          const lineDiv = document.createElement('div');
-          lineDiv.className = 'lyric-line active';
-          lineDiv.innerHTML = renderLineElements(text);
-          viewport.appendChild(lineDiv);
-        });
-        statusText.textContent = "Plain lyrics without timestamps.";
       }
 
-      // Load YouTube Track via Search Embed
-      if (ytPlayer && ytPlayer.loadPlaylist) {
-        ytPlayer.loadPlaylist({
-          listType: 'search',
-          list: `${track.artistName} ${track.trackName} audio`,
-          index: 0,
-          startSeconds: 0
-        });
+      // B. Fetch Synced Lyrics from LRCLIB using full-text search
+      try {
+        const lyricsRes = await fetch(`https://lrclib.net/api/search?q=${encodeURIComponent(cleanTitle + ' ' + primaryArtist.split(',')[0])}`);
+        const lyricsList = await lyricsRes.json();
+        const bestLyrics = lyricsList && lyricsList.length > 0 ? lyricsList[0] : null;
+
+        if (bestLyrics && bestLyrics.syncedLyrics) {
+          lyricsData = parseLRC(bestLyrics.syncedLyrics);
+          lyricsData.forEach((line, idx) => {
+            const lineDiv = document.createElement('div');
+            lineDiv.className = 'lyric-line';
+            lineDiv.id = `lyric-${idx}`;
+            lineDiv.innerHTML = renderLineElements(line.text);
+            
+            lineDiv.addEventListener('click', () => {
+              audio.currentTime = line.time;
+              audio.play();
+            });
+            viewport.appendChild(lineDiv);
+          });
+          statusText.textContent = "Full song streaming with synced lyrics.";
+        } else if (bestLyrics && bestLyrics.plainLyrics) {
+          bestLyrics.plainLyrics.split('\n').forEach(text => {
+            if (!text.trim()) return;
+            const lineDiv = document.createElement('div');
+            lineDiv.className = 'lyric-line active';
+            lineDiv.innerHTML = renderLineElements(text);
+            viewport.appendChild(lineDiv);
+          });
+          statusText.textContent = "Full song streaming (Plain lyrics).";
+        } else {
+          viewport.innerHTML = `<p style="color: var(--text-muted); margin-top: 40px; text-align: center;">Full track streaming. You can find the full lyrics by searching for the song on Google.</p>`;
+          statusText.textContent = "Full audio streaming.";
+        }
+      } catch (e) {
+        viewport.innerHTML = `<p style="color: var(--text-muted); margin-top: 40px; text-align: center;">Full track streaming. You can find the full lyrics by searching for the song on Google.</p>`;
+        statusText.textContent = "Full audio streaming.";
       }
     }
 
-    // 6. User Control Listeners
+    // 7. Event Handlers
     playBtn.addEventListener('click', () => {
-      if (!ytPlayer || typeof ytPlayer.getPlayerState !== 'function') return;
-      const state = ytPlayer.getPlayerState();
-      if (state === YT.PlayerState.PLAYING) {
-        ytPlayer.pauseVideo();
+      if (audio.paused) {
+        audio.play();
       } else {
-        ytPlayer.playVideo();
+        audio.pause();
       }
     });
 
@@ -697,10 +707,8 @@
     seekBar.addEventListener('touchstart', () => { isUserSeeking = true; });
 
     seekBar.addEventListener('change', () => {
-      if (ytPlayer && ytPlayer.getDuration) {
-        const duration = ytPlayer.getDuration();
-        const targetTime = (seekBar.value / 100) * duration;
-        ytPlayer.seekTo(targetTime, true);
+      if (audio.duration) {
+        audio.currentTime = (seekBar.value / 100) * audio.duration;
       }
       isUserSeeking = false;
     });
