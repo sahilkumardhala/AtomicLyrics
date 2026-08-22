@@ -120,36 +120,40 @@
   .empty-state p{ margin:0; font-size:14.5px; line-height:1.6; }
   .empty-state .hint-sub{ font-size:12px; color:var(--ink-faint); }
 
-  .lyrics-stream{ max-width:760px; margin:0 auto; display:flex; flex-direction:column; gap:2px; }
+  .lyrics-stream{ max-width:760px; margin:0 auto; display:flex; flex-direction:column; gap:6px; }
 
   .lyric-line{
     padding:9px 16px; border-radius:var(--radius-md); cursor:pointer;
-    display:flex; flex-wrap:wrap; align-items:baseline; gap:0; row-gap:6px;
-    line-height:1.5; transition:background-color .25s ease, opacity .25s ease;
-    opacity:0.42; outline:none;
+    display:flex; flex-wrap:wrap; align-items:center; gap:0; row-gap:6px;
+    line-height:1.5; transition:background-color .25s ease, opacity .25s ease, transform .2s ease;
+    opacity:0.35; outline:none;
   }
   .lyric-line:hover{ background:rgba(255,255,255,0.035); opacity:0.75; }
   .lyric-line:focus-visible{ box-shadow:0 0 0 2px var(--teal); opacity:0.9; }
   .lyric-line.active{
     opacity:1;
+    transform:scale(1.02);
     background:linear-gradient(90deg, rgba(94,234,212,0.08), rgba(94,234,212,0.02) 60%, transparent);
   }
-  .lyric-line.active .tile{ border-color:var(--teal); }
+  .lyric-line.active .tile{
+    border-color:var(--teal);
+    box-shadow:0 0 10px rgba(94,234,212,0.3);
+  }
   .lyric-line.active .tile .tile-sym{ color:var(--teal); }
   .lyric-line.no-sync{ cursor:default; }
 
-  .word{ display:inline-flex; align-items:baseline; margin:0 5px 0 0; }
+  .word{ display:inline-flex; align-items:center; margin:0 6px 0 0; }
   .raw{ font-family:var(--font-body); color:var(--ink-dim); font-size:15px; white-space:pre-wrap; }
-  .lyric-line .raw{ align-self:center; }
 
   .tile{
     position:relative; display:inline-flex; flex-direction:column; align-items:center; justify-content:center;
-    width:30px; height:30px; margin:0 1.5px; border:1.5px solid var(--hairline); border-radius:5px;
-    background:var(--panel-raised); transition:border-color .2s ease, transform .15s ease;
+    width:32px; height:34px; margin:0 1.5px; border:1.5px solid var(--hairline); border-radius:6px;
+    background:var(--panel-raised); transition:border-color .2s ease, transform .15s ease, box-shadow .2s ease;
+    user-select:none;
   }
   .lyric-line:hover .tile{ transform:translateY(-1px); }
-  .tile .tile-num{ position:absolute; top:2px; left:3px; font-family:var(--font-mono); font-size:6px; color:var(--brass); letter-spacing:0.2px; }
-  .tile .tile-sym{ font-family:var(--font-mono); font-weight:700; font-size:13px; color:var(--ink); line-height:1; margin-top:2px; }
+  .tile .tile-num{ position:absolute; top:2px; left:3px; font-family:var(--font-mono); font-size:6px; color:var(--brass); letter-spacing:0.2px; line-height:1; }
+  .tile .tile-sym{ font-family:var(--font-mono); font-weight:700; font-size:13px; color:var(--ink); line-height:1; margin-top:3px; }
 
   /* ---------- dock ---------- */
   .dock{
@@ -158,6 +162,7 @@
     background:linear-gradient(180deg, rgba(14,20,28,0), var(--bg-deep) 30%);
     padding:12px 18px calc(14px + env(safe-area-inset-bottom));
     display:flex; flex-direction:column; gap:8px;
+    z-index:20;
   }
   .player-bar{ display:flex; align-items:center; gap:12px; max-width:760px; width:100%; margin:0 auto; }
   .play-btn{
@@ -170,13 +175,13 @@
   .play-btn:active{ transform:scale(0.94); }
   .play-btn:disabled{ opacity:0.4; cursor:default; }
   .time{ font-family:var(--font-mono); font-size:11.5px; color:var(--ink-dim); flex:0 0 auto; min-width:38px; text-align:center; }
-  .scrub{ -webkit-appearance:none; appearance:none; flex:1 1 auto; height:3px; border-radius:3px; background:var(--hairline); outline:none; cursor:pointer; }
+  .scrub{ -webkit-appearance:none; appearance:none; flex:1 1 auto; height:4px; border-radius:3px; background:var(--hairline); outline:none; cursor:pointer; }
   .scrub::-webkit-slider-thumb{
     -webkit-appearance:none; appearance:none; width:12px; height:12px; border-radius:50%;
-    background:var(--teal); border:2px solid var(--bg-deep); margin-top:-4.5px; cursor:pointer;
+    background:var(--teal); border:2px solid var(--bg-deep); cursor:pointer;
   }
-  .scrub::-moz-range-thumb{ width:10px; height:10px; border-radius:50%; background:var(--teal); border:2px solid var(--bg-deep); cursor:pointer; }
-  .scrub::-webkit-slider-runnable-track{ height:3px; border-radius:3px; background:var(--hairline); }
+  .scrub::-moz-range-thumb{ width:12px; height:12px; border-radius:50%; background:var(--teal); border:2px solid var(--bg-deep); cursor:pointer; }
+  .scrub::-webkit-slider-runnable-track{ height:4px; border-radius:3px; background:var(--hairline); }
 
   .search-row{ display:flex; flex-direction:column; gap:6px; max-width:760px; width:100%; margin:0 auto; }
   .search-bar{ display:flex; gap:8px; width:100%; }
@@ -209,7 +214,17 @@
   .search-status.error .dot{ background:var(--danger); animation:none; }
   @keyframes pulse{ 0%,100%{ opacity:0.35; } 50%{ opacity:1; } }
 
-  .yt-holder{ position:fixed; bottom:2px; right:2px; width:2px; height:2px; overflow:hidden; opacity:0.001; pointer-events:none; }
+  /* Stable, non-throttled offscreen placement */
+  .yt-holder{
+    position:fixed;
+    bottom:0;
+    right:0;
+    width:200px;
+    height:120px;
+    transform:translateY(200%);
+    pointer-events:none;
+    z-index:-1;
+  }
 
   [hidden]{ display:none !important; }
 
@@ -220,13 +235,9 @@
     .now-playing{ max-width:38vw; font-size:10.5px; }
     .lyrics-viewport{ padding:6vh 10px calc(var(--dock-h) + 5vh); }
     .lyric-line{ padding:8px 8px; font-size:14px; }
-    .tile{ width:26px; height:26px; }
-    .tile .tile-sym{ font-size:11.5px; }
+    .tile{ width:28px; height:30px; }
+    .tile .tile-sym{ font-size:12px; }
     .dock{ padding:10px 12px calc(12px + env(safe-area-inset-bottom)); }
-  }
-
-  @media (prefers-reduced-motion: reduce){
-    *{ animation:none !important; transition:none !important; }
   }
 </style>
 </head>
@@ -249,14 +260,14 @@
   <main class="lyrics-viewport" id="lyricsViewport">
     <div class="empty-state" id="emptyState">
       <div class="empty-tile"><span class="tile-num">0</span><span class="tile-sym">?</span></div>
-      <p>Search a track below. Lyrics and audio load automatically — every line gets rebuilt from element symbols, and whatever doesn't fit stays in plain type.</p>
-      <p class="hint-sub">Try "Because — The Beatles" for a clean run of tiles.</p>
+      <p>Search any song below. Lyrics and YouTube audio load automatically — every line gets decomposed into chemical elements.</p>
+      <p class="hint-sub">Try "Radioactive", "Believer", "Kesariya", or "Gehra Hua".</p>
     </div>
     <div class="lyrics-stream" id="lyricsStream"></div>
   </main>
 
   <footer class="dock">
-    <div class="player-bar" id="playerBar" hidden>
+    <div class="player-bar" id="playerBar">
       <button class="play-btn" id="playBtn" aria-label="Play">▶</button>
       <span class="time" id="timeCurrent">00:00</span>
       <input type="range" class="scrub" id="scrub" min="0" max="1000" value="0" aria-label="Seek">
@@ -279,9 +290,7 @@
 (function(){
   'use strict';
 
-  /* =========================================================
-     Periodic table dictionary (all 118 elements)
-     ========================================================= */
+  /* 1. All 118 Periodic Table Elements */
   const ELEMENTS = {
     H:[1,'Hydrogen'], He:[2,'Helium'], Li:[3,'Lithium'], Be:[4,'Beryllium'], B:[5,'Boron'],
     C:[6,'Carbon'], N:[7,'Nitrogen'], O:[8,'Oxygen'], F:[9,'Fluorine'], Ne:[10,'Neon'],
@@ -309,9 +318,7 @@
     Lv:[116,'Livermorium'], Ts:[117,'Tennessine'], Og:[118,'Oganesson']
   };
 
-  /* =========================================================
-     Memoized DP / backtracking chemical decomposer — O(n) per word
-     ========================================================= */
+  /* 2. Memoized DP Chemical Decomposer */
   function decomposeWord(word){
     const n = word.length;
     const memo = new Array(n + 1);
@@ -386,9 +393,7 @@
     return out;
   }
 
-  /* =========================================================
-     LRC parsing
-     ========================================================= */
+  /* 3. LRC Parser */
   function parseLRC(lrc){
     const TIME = /\[(\d{1,2}):(\d{2}(?:\.\d{1,3})?)\]/g;
     const lines = lrc.split(/\r?\n/);
@@ -415,9 +420,7 @@
     return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
   }
 
-  /* =========================================================
-     Rendering
-     ========================================================= */
+  /* 4. Rendering */
   const lyricsViewport = document.getElementById('lyricsViewport');
   const lyricsStream = document.getElementById('lyricsStream');
   const emptyState = document.getElementById('emptyState');
@@ -428,7 +431,6 @@
     el.dataset.index = String(index);
     if (lineObj.time !== null) el.dataset.time = String(lineObj.time);
     el.tabIndex = lineObj.time !== null ? 0 : -1;
-    el.setAttribute('role', lineObj.time !== null ? 'button' : 'presentation');
 
     const segs = decomposeLine(lineObj.text);
     for (const seg of segs){
@@ -467,9 +469,6 @@
 
     if (lineObj.time !== null){
       el.addEventListener('click', () => seekTo(lineObj.time));
-      el.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); seekTo(lineObj.time); }
-      });
     }
     return el;
   }
@@ -483,158 +482,58 @@
     lyricsViewport.scrollTop = 0;
   }
 
-  /* =========================================================
-     LRCLIB
-     ========================================================= */
-  const LRCLIB_BASE = 'https://lrclib.net/api';
-
-  async function searchLRCLIB(query){
-    const url = LRCLIB_BASE + '/search?q=' + encodeURIComponent(query);
-    const res = await fetch(url);
-    if (!res.ok) throw new Error('LRCLIB search failed (' + res.status + ')');
-    return res.json();
+  /* 5. LRCLIB Integration */
+  async function fetchLyrics(query){
+    const searchUrl = 'https://lrclib.net/api/search?q=' + encodeURIComponent(query);
+    const res = await fetch(searchUrl);
+    if (!res.ok) throw new Error('LRCLIB failed');
+    const list = await res.json();
+    if (!list || !list.length) return null;
+    return list.find(t => t.syncedLyrics && t.syncedLyrics.trim()) || list[0];
   }
 
-  async function getLRCLIBById(id){
-    const url = LRCLIB_BASE + '/get/' + encodeURIComponent(id);
-    const res = await fetch(url);
-    if (!res.ok) throw new Error('LRCLIB fetch failed (' + res.status + ')');
-    return res.json();
-  }
-
-  function pickBestTrack(tracks){
-    if (!tracks || !tracks.length) return null;
-    const synced = tracks.find(t => t.syncedLyrics && t.syncedLyrics.trim());
-    return synced || tracks[0];
-  }
-
-  /* =========================================================
-     Automatic YouTube resolution (audio only, via IFrame Player)
-     No manual video ID entry — a video is picked automatically
-     from public search mirrors and streamed through the official
-     YouTube IFrame API, visually hidden so only audio plays.
-     ========================================================= */
-  const INVIDIOUS_INSTANCES = [
-    'https://yewtu.be',
-    'https://inv.nadeko.net',
-    'https://invidious.nerdvpn.de',
-    'https://iv.ggtyler.dev',
-    'https://invidious.jing.rocks',
-    'https://invidious.privacyredirect.com'
+  /* 6. Multi-Provider YouTube Resolver */
+  const YT_SEARCH_ENDPOINTS = [
+    (q) => `https://pipedapi.kavin.rocks/search?q=${encodeURIComponent(q)}&filter=videos`,
+    (q) => `https://api.piped.privacydev.net/search?q=${encodeURIComponent(q)}&filter=videos`,
+    (q) => `https://yewtu.be/api/v1/search?q=${encodeURIComponent(q)}&type=video`,
+    (q) => `https://inv.nadeko.net/api/v1/search?q=${encodeURIComponent(q)}&type=video`,
+    (q) => `https://invidious.nerdvpn.de/api/v1/search?q=${encodeURIComponent(q)}&type=video`
   ];
 
-  function fetchWithTimeout(url, ms){
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), ms);
-    return fetch(url, { signal: controller.signal }).finally(() => clearTimeout(timer));
-  }
+  async function resolveYouTubeVideoId(trackName, artistName){
+    const cleanTrack = trackName.replace(/\(.*?\)/g, '').replace(/\[.*?\]/g, '').trim();
+    const query = `${cleanTrack} ${artistName || ''} official audio`.trim();
 
-  async function findYouTubeVideoId(query){
-    const attempts = INVIDIOUS_INSTANCES.map(async (base) => {
-      const url = base + '/api/v1/search?q=' + encodeURIComponent(query) + '&type=video';
-      const res = await fetchWithTimeout(url, 5000);
-      if (!res.ok) throw new Error('bad status');
-      const data = await res.json();
-      const hit = Array.isArray(data) ? data.find(v => v.videoId) : null;
-      if (!hit) throw new Error('no results');
-      return hit.videoId;
+    const fetchers = YT_SEARCH_ENDPOINTS.map(async (fn) => {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 4500);
+      try {
+        const res = await fetch(fn(query), { signal: controller.signal });
+        clearTimeout(timeout);
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        const items = data.items || data;
+        if (Array.isArray(items) && items.length > 0){
+          const first = items[0];
+          const vid = first.videoId || (first.url && first.url.replace('/watch?v=', ''));
+          if (vid && vid.length >= 8) return vid;
+        }
+        throw new Error();
+      } catch (err){
+        clearTimeout(timeout);
+        throw err;
+      }
     });
+
     try {
-      return await Promise.any(attempts);
-    } catch (e){
+      return await Promise.any(fetchers);
+    } catch {
       return null;
     }
   }
 
-  /* =========================================================
-     Inline status line (replaces any blocking loading screen)
-     ========================================================= */
-  const searchStatus = document.getElementById('searchStatus');
-  function setStatus(text, mode){
-    if (!text){ searchStatus.innerHTML = ''; return; }
-    searchStatus.className = 'search-status' + (mode === 'error' ? ' error' : '');
-    searchStatus.innerHTML = (mode === 'error' ? '' : '<span class="dot"></span>') + '<span>' + text + '</span>';
-  }
-
-  /* =========================================================
-     Track selection flow (fully automatic — no picker, no prompts)
-     ========================================================= */
-  let currentLines = [];
-  let lastActiveIndex = -1;
-
-  async function loadTrack(track){
-    let lrcText = track.syncedLyrics;
-    let plainText = track.plainLyrics;
-
-    if ((!lrcText || !lrcText.trim()) && track.id){
-      try {
-        const full = await getLRCLIBById(track.id);
-        lrcText = full.syncedLyrics;
-        plainText = full.plainLyrics;
-      } catch (e){ /* fall through to plain / instrumental handling */ }
-    }
-
-    let lines;
-    if (lrcText && lrcText.trim()){
-      lines = parseLRC(lrcText);
-    } else if (plainText && plainText.trim()){
-      lines = plainText.split(/\r?\n/).filter(l => l.trim()).map(text => ({ time: null, text }));
-    } else {
-      lines = [{ time: null, text: track.instrumental ? '(instrumental)' : '(no lyrics available)' }];
-    }
-
-    currentLines = lines;
-    lastActiveIndex = -1;
-    renderLyrics(lines);
-
-    document.getElementById('npTitle').textContent = track.trackName || '';
-    document.getElementById('npArtist').textContent = track.artistName || '';
-    document.getElementById('nowPlaying').hidden = false;
-
-    setStatus('Finding the recording…');
-    const query = [track.trackName, track.artistName].filter(Boolean).join(' ');
-    const videoId = await findYouTubeVideoId(query);
-    if (videoId){
-      loadYouTubeVideo(videoId);
-      setStatus('');
-    } else {
-      setStatus('Lyrics loaded, but the recording couldn\u2019t be found automatically — try adding the artist name.', 'error');
-    }
-  }
-
-  /* =========================================================
-     Search bar
-     ========================================================= */
-  const searchForm = document.getElementById('searchForm');
-  const searchInput = document.getElementById('searchInput');
-  const searchBtn = document.getElementById('searchBtn');
-
-  searchForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const q = searchInput.value.trim();
-    if (!q) return;
-    searchBtn.disabled = true;
-    searchBtn.textContent = 'Searching…';
-    setStatus('Searching lyrics…');
-    try {
-      const results = await searchLRCLIB(q);
-      const best = pickBestTrack(results);
-      if (!best){
-        setStatus('No lyrics found for that search. Try a different spelling, or add the artist name.', 'error');
-        return;
-      }
-      await loadTrack(best);
-    } catch (err){
-      setStatus('Could not reach LRCLIB. Check your connection and try again.', 'error');
-    } finally {
-      searchBtn.disabled = false;
-      searchBtn.textContent = 'Search & Play';
-    }
-  });
-
-  /* =========================================================
-     YouTube IFrame Player — hidden, audio only
-     ========================================================= */
+  /* 7. YouTube IFrame Player */
   let ytApiReady = false;
   let player = null;
   let pendingVideoId = null;
@@ -643,7 +542,7 @@
   window.onYouTubeIframeAPIReady = function(){
     ytApiReady = true;
     player = new YT.Player('ytPlayer', {
-      height: '2', width: '2',
+      height: '120', width: '200',
       playerVars: { autoplay: 1, controls: 0, disablekb: 1, modestbranding: 1, rel: 0, playsinline: 1 },
       events: { onReady: onPlayerReady, onStateChange: onPlayerStateChange }
     });
@@ -651,7 +550,6 @@
 
   function onPlayerReady(){
     playerReadyOnce = true;
-    document.getElementById('playBtn').disabled = false;
     if (pendingVideoId){
       player.loadVideoById(pendingVideoId);
       pendingVideoId = null;
@@ -663,14 +561,13 @@
     if (e.data === YT.PlayerState.PLAYING){
       playBtn.textContent = '⏸';
       playBtn.setAttribute('aria-label', 'Pause');
-    } else if (e.data === YT.PlayerState.PAUSED || e.data === YT.PlayerState.ENDED){
+    } else {
       playBtn.textContent = '▶';
       playBtn.setAttribute('aria-label', 'Play');
     }
   }
 
   function loadYouTubeVideo(videoId){
-    document.getElementById('playerBar').hidden = false;
     if (!ytApiReady || !player || !playerReadyOnce){
       pendingVideoId = videoId;
       return;
@@ -685,11 +582,20 @@
     }
   }
 
-  /* ---- transport controls ---- */
+  /* 8. UI & Player Synchronization */
+  const searchStatus = document.getElementById('searchStatus');
+  function setStatus(text, mode){
+    if (!text){ searchStatus.innerHTML = ''; return; }
+    searchStatus.className = 'search-status' + (mode === 'error' ? ' error' : '');
+    searchStatus.innerHTML = (mode === 'error' ? '' : '<span class="dot"></span>') + '<span>' + text + '</span>';
+  }
+
   const playBtn = document.getElementById('playBtn');
   const scrub = document.getElementById('scrub');
   const timeCurrent = document.getElementById('timeCurrent');
   const timeTotal = document.getElementById('timeTotal');
+  let currentLines = [];
+  let lastActiveIndex = -1;
   let scrubbing = false;
 
   playBtn.addEventListener('click', () => {
@@ -740,6 +646,59 @@
     }
     updateActiveLine(current);
   }, 250);
+
+  /* 9. Search Flow */
+  const searchForm = document.getElementById('searchForm');
+  const searchInput = document.getElementById('searchInput');
+  const searchBtn = document.getElementById('searchBtn');
+
+  searchForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const q = searchInput.value.trim();
+    if (!q) return;
+
+    searchBtn.disabled = true;
+    searchBtn.textContent = 'Searching…';
+    setStatus('Fetching lyrics & recording…');
+
+    try {
+      const track = await fetchLyrics(q);
+      if (!track){
+        setStatus('No matching lyrics found. Try adding the artist name.', 'error');
+        return;
+      }
+
+      let lines;
+      if (track.syncedLyrics && track.syncedLyrics.trim()){
+        lines = parseLRC(track.syncedLyrics);
+      } else if (track.plainLyrics && track.plainLyrics.trim()){
+        lines = track.plainLyrics.split(/\r?\n/).filter(l => l.trim()).map(text => ({ time: null, text }));
+      } else {
+        lines = [{ time: null, text: '(Instrumental / No lyrics available)' }];
+      }
+
+      currentLines = lines;
+      lastActiveIndex = -1;
+      renderLyrics(lines);
+
+      document.getElementById('npTitle').textContent = track.trackName || q;
+      document.getElementById('npArtist').textContent = track.artistName || '';
+      document.getElementById('nowPlaying').hidden = false;
+
+      const videoId = await resolveYouTubeVideoId(track.trackName || q, track.artistName || '');
+      if (videoId){
+        loadYouTubeVideo(videoId);
+        setStatus('');
+      } else {
+        setStatus('Lyrics loaded. Audio stream not found.', 'error');
+      }
+    } catch (err){
+      setStatus('Search failed. Check your network connection.', 'error');
+    } finally {
+      searchBtn.disabled = false;
+      searchBtn.textContent = 'Search & Play';
+    }
+  });
 
 })();
 </script>
