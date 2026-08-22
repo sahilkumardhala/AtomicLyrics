@@ -285,7 +285,7 @@
     </div>
   </header>
 
-  <!-- HTML5 Native Full Track Audio Engine -->
+  <!-- Direct HTML5 Audio Engine -->
   <audio id="audioEngine" preload="auto" crossorigin="anonymous"></audio>
 
   <!-- Scrolling Lyrics Container -->
@@ -314,7 +314,7 @@
   </footer>
 
   <script>
-    // 1. Full 118 Periodic Table Elements
+    // 1. Complete Periodic Table Database
     const ELEMENTS = {
       H: { n: 1, name: "Hydrog" }, HE: { n: 2, name: "Helium" },
       LI: { n: 3, name: "Lithium" }, BE: { n: 4, name: "Berylli" },
@@ -351,7 +351,7 @@
       PU: { n: 94, name: "Pluton" }
     };
 
-    // 2. Devanagari to Latin Transliteration (Allows Hindi/Indian songs to decompose into tiles)
+    // 2. Devanagari Transliteration
     const DEVA_MAP = {
       'क':'k','ख':'kh','ग':'g','घ':'gh','ङ':'ng','च':'ch','छ':'chh','ज':'j','झ':'jh','ञ':'ny',
       'ट':'t','ठ':'th','ड':'d','ढ':'dh','ण':'n','त':'t','थ':'th','द':'d','ध':'dh','न':'n',
@@ -369,7 +369,7 @@
       return out;
     }
 
-    // 3. Dynamic Programming Decomposer
+    // 3. DP Periodic Decomposer
     function findOptimalDecomposition(word) {
       const memo = new Map();
 
@@ -469,7 +469,7 @@
       return result.sort((a, b) => a.time - b.time);
     }
 
-    // 5. Audio & UI State
+    // 5. Audio Engine & UI Controller
     const audio = document.getElementById('audioEngine');
     const playBtn = document.getElementById('togglePlayBtn');
     const seekBar = document.getElementById('seekBar');
@@ -517,49 +517,59 @@
       });
     });
 
-    // 6. Direct Full Audio Stream Resolution
+    // 6. Resilient Audio Stream Resolver (Multi-Mirror Pool)
+    const JIOSAAVN_MIRRORS = [
+      (q) => `https://saavn.dev/api/search/songs?query=${encodeURIComponent(q)}&limit=5`,
+      (q) => `https://saavn.me/search/songs?query=${encodeURIComponent(q)}&limit=5`,
+      (q) => `https://jiosaavn-api-privateindexer.vercel.app/search/songs?query=${encodeURIComponent(q)}&limit=5`,
+      (q) => `https://jiosavan-api-seven.vercel.app/api/search/songs?query=${encodeURIComponent(q)}&limit=5`
+    ];
+
     async function resolveAudioStream(query) {
-      // Endpoint 1: JioSaavn (High reliability for Indian & Global hits)
-      try {
-        const res = await fetch(`https://saavn.dev/api/search/songs?query=${encodeURIComponent(query)}&limit=1`);
-        const data = await res.json();
-        const songs = data?.data?.results;
-        if (songs && songs.length > 0) {
-          const downloadList = songs[0].downloadUrl || [];
-          const best = downloadList.find(d => d.quality === '320kbps') || downloadList[downloadList.length - 1];
-          if (best && best.url) return best.url;
-        }
-      } catch (e) {}
+      const cleanTerm = query.replace(/\(.*?\)/g, '').replace(/\[.*?\]/g, '').trim();
 
-      // Endpoint 2: Piped API audio stream
-      try {
-        const piped = await fetch(`https://pipedapi.kavin.rocks/search?q=${encodeURIComponent(query)}&filter=music_songs`);
-        const data = await piped.json();
-        if (data.items && data.items.length > 0) {
-          const vidId = data.items[0].url.replace('/watch?v=', '');
-          const streams = await (await fetch(`https://pipedapi.kavin.rocks/streams/${vidId}`)).json();
-          if (streams.audioStreams && streams.audioStreams.length > 0) {
-            return streams.audioStreams[0].url;
+      for (const mirrorFn of JIOSAAVN_MIRRORS) {
+        try {
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 3500);
+          const res = await fetch(mirrorFn(cleanTerm), { signal: controller.signal });
+          clearTimeout(timeout);
+
+          if (!res.ok) continue;
+          const data = await res.json();
+          const songs = data?.data?.results || data?.data || data?.results;
+
+          if (Array.isArray(songs) && songs.length > 0) {
+            const first = songs[0];
+            const downloads = first.downloadUrl || first.media_url || [];
+            if (Array.isArray(downloads) && downloads.length > 0) {
+              const best = downloads.find(d => d.quality === '320kbps') || 
+                           downloads.find(d => d.quality === '160kbps') || 
+                           downloads[downloads.length - 1];
+              if (best && (best.url || best.link)) return best.url || best.link;
+            } else if (typeof downloads === 'string') {
+              return downloads;
+            }
           }
-        }
-      } catch (e) {}
-
+        } catch (e) {}
+      }
       return null;
     }
 
-    // 7. Search & Play Controller
-    async function searchAndPlay(query) {
+    // 7. Search & Play
+    async function searchAndPlay(rawQuery) {
+      const query = rawQuery.trim();
       statusText.textContent = `Finding "${query}"...`;
       trackName.textContent = query;
       lyricsData = [];
 
-      // A. Fetch Synced Lyrics
+      // A. Fetch Synced Lyrics from LRCLIB
       try {
         const lrcRes = await fetch(`https://lrclib.net/api/search?q=${encodeURIComponent(query)}`);
         const lrcList = await lrcRes.json();
 
-        if (lrcList && lrcList.length > 0) {
-          const matched = lrcList[0];
+        if (Array.isArray(lrcList) && lrcList.length > 0) {
+          const matched = lrcList.find(t => t.syncedLyrics) || lrcList[0];
           trackName.textContent = `${matched.artistName} - ${matched.trackName}`;
           viewport.innerHTML = '';
 
@@ -587,22 +597,20 @@
             });
             statusText.textContent = "Plain lyrics decomposed into elements.";
           }
-        } else {
-          viewport.innerHTML = `<p style="color: var(--ink-faint); margin-top: 40px; text-align: center;">You can find the full lyrics by searching for the song on Google.</p>`;
         }
-      } catch (err) {
-        viewport.innerHTML = `<p style="color: var(--ink-faint); margin-top: 40px; text-align: center;">You can find the full lyrics by searching for the song on Google.</p>`;
-      }
+      } catch (err) {}
 
-      // B. Resolve & Play Direct Audio
+      // B. Resolve & Play Full Stream
       const streamUrl = await resolveAudioStream(query);
       if (streamUrl) {
         audio.src = streamUrl;
-        audio.play().catch(() => {
-          statusText.textContent = "Tap Play (▶) to start audio.";
+        audio.play().then(() => {
+          statusText.textContent = "Playing full track.";
+        }).catch(() => {
+          statusText.textContent = "Tap Play (▶) to begin.";
         });
       } else {
-        statusText.textContent = "Audio stream not found. Try adding artist name.";
+        statusText.textContent = "Audio stream not found. Try a different track title.";
       }
     }
 
