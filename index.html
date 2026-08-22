@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>AtomicLyrics — Periodic Table Player</title>
+<title>AtomicLyrics — YouTube Periodic Player</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
@@ -16,7 +16,6 @@
     --ink-dim: #94a3b8;
     --ink-faint: #64748b;
     --cyan: #38bdf8;
-    --cyan-glow: #0284c7;
     --dock-h: 140px;
   }
 
@@ -170,6 +169,18 @@
     padding: 0 2px;
   }
 
+  /* YouTube IFrame Holder */
+  .yt-container {
+    position: fixed;
+    bottom: 0;
+    right: 0;
+    width: 200px;
+    height: 120px;
+    transform: translateY(200%);
+    pointer-events: none;
+    z-index: -1;
+  }
+
   /* Bottom Dock Controls */
   footer.dock {
     position: fixed;
@@ -285,17 +296,19 @@
     </div>
   </header>
 
-  <!-- Direct HTML5 Audio Engine -->
-  <audio id="audioEngine" preload="auto" crossorigin="anonymous"></audio>
+  <!-- Off-Screen YouTube IFrame Player -->
+  <div class="yt-container">
+    <div id="ytPlayerTarget"></div>
+  </div>
 
   <!-- Scrolling Lyrics Container -->
   <main class="lyrics-viewport" id="lyricsViewport">
     <p style="color: var(--ink-faint); margin-top: 40px; text-align: center;">
-      Search any song title below (e.g. "Gehra Hua", "Kesariya", "Radioactive").
+      Search any track (e.g. "Gehra Hua", "Kesariya", "Believer") to start YouTube audio & periodic lyrics.
     </p>
   </main>
 
-  <!-- Bottom Dock -->
+  <!-- Bottom Dock Controls -->
   <footer class="dock">
     <div class="footer-container">
       <div class="player-row">
@@ -313,8 +326,11 @@
     </div>
   </footer>
 
+  <!-- 1. Official YouTube IFrame API Script Tag -->
+  <script src="https://www.youtube.com/iframe_api"></script>
+
   <script>
-    // 1. Complete Periodic Table Database
+    // 1. Full 118 Periodic Table Elements
     const ELEMENTS = {
       H: { n: 1, name: "Hydrog" }, HE: { n: 2, name: "Helium" },
       LI: { n: 3, name: "Lithium" }, BE: { n: 4, name: "Berylli" },
@@ -469,8 +485,14 @@
       return result.sort((a, b) => a.time - b.time);
     }
 
-    // 5. Audio Engine & UI Controller
-    const audio = document.getElementById('audioEngine');
+    // 5. YouTube IFrame API Initialization
+    let ytPlayer = null;
+    let ytReady = false;
+    let pendingVideoId = null;
+    let syncInterval = null;
+    let lyricsData = [];
+    let isUserSeeking = false;
+
     const playBtn = document.getElementById('togglePlayBtn');
     const seekBar = document.getElementById('seekBar');
     const timeDisplay = document.getElementById('timeDisplay');
@@ -480,8 +502,37 @@
     const searchInput = document.getElementById('searchInput');
     const searchBtn = document.getElementById('searchBtn');
 
-    let lyricsData = [];
-    let isUserSeeking = false;
+    window.onYouTubeIframeAPIReady = function() {
+      ytPlayer = new YT.Player('ytPlayerTarget', {
+        height: '120',
+        width: '200',
+        playerVars: {
+          'autoplay': 1,
+          'controls': 0,
+          'playsinline': 1
+        },
+        events: {
+          'onReady': () => {
+            ytReady = true;
+            if (pendingVideoId) {
+              ytPlayer.loadVideoById(pendingVideoId);
+              pendingVideoId = null;
+            }
+          },
+          'onStateChange': onPlayerStateChange
+        }
+      });
+    };
+
+    function onPlayerStateChange(event) {
+      if (event.data === YT.PlayerState.PLAYING) {
+        playBtn.textContent = '⏸';
+        startSyncLoop();
+      } else {
+        playBtn.textContent = '▶';
+        clearInterval(syncInterval);
+      }
+    }
 
     function formatTime(seconds) {
       const mins = Math.floor(seconds / 60) || 0;
@@ -489,70 +540,69 @@
       return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
     }
 
-    audio.addEventListener('play', () => { playBtn.textContent = '⏸'; });
-    audio.addEventListener('pause', () => { playBtn.textContent = '▶'; });
+    function startSyncLoop() {
+      clearInterval(syncInterval);
+      syncInterval = setInterval(() => {
+        if (!ytPlayer || typeof ytPlayer.getCurrentTime !== 'function') return;
 
-    audio.addEventListener('timeupdate', () => {
-      const currentSec = audio.currentTime;
-      const duration = audio.duration || 0;
+        const currentSec = ytPlayer.getCurrentTime() || 0;
+        const duration = ytPlayer.getDuration() || 0;
 
-      if (!isUserSeeking && duration > 0) {
-        seekBar.value = (currentSec / duration) * 100;
-        timeDisplay.textContent = `${formatTime(currentSec)} / ${formatTime(duration)}`;
-      }
-
-      if (lyricsData.length === 0) return;
-
-      lyricsData.forEach((line, idx) => {
-        const nextLine = lyricsData[idx + 1];
-        const lineElem = document.getElementById(`lyric-${idx}`);
-
-        if (currentSec >= line.time && (!nextLine || currentSec < nextLine.time)) {
-          if (lineElem && !lineElem.classList.contains('active')) {
-            document.querySelectorAll('.lyric-line').forEach(el => el.classList.remove('active'));
-            lineElem.classList.add('active');
-            lineElem.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          }
+        if (!isUserSeeking && duration > 0) {
+          seekBar.value = (currentSec / duration) * 100;
+          timeDisplay.textContent = `${formatTime(currentSec)} / ${formatTime(duration)}`;
         }
-      });
-    });
 
-    // 6. Resilient Audio Stream Resolver (Multi-Mirror Pool)
-    const JIOSAAVN_MIRRORS = [
-      (q) => `https://saavn.dev/api/search/songs?query=${encodeURIComponent(q)}&limit=5`,
-      (q) => `https://saavn.me/search/songs?query=${encodeURIComponent(q)}&limit=5`,
-      (q) => `https://jiosaavn-api-privateindexer.vercel.app/search/songs?query=${encodeURIComponent(q)}&limit=5`,
-      (q) => `https://jiosavan-api-seven.vercel.app/api/search/songs?query=${encodeURIComponent(q)}&limit=5`
-    ];
+        if (lyricsData.length === 0) return;
 
-    async function resolveAudioStream(query) {
+        lyricsData.forEach((line, idx) => {
+          const nextLine = lyricsData[idx + 1];
+          const lineElem = document.getElementById(`lyric-${idx}`);
+
+          if (currentSec >= line.time && (!nextLine || currentSec < nextLine.time)) {
+            if (lineElem && !lineElem.classList.contains('active')) {
+              document.querySelectorAll('.lyric-line').forEach(el => el.classList.remove('active'));
+              lineElem.classList.add('active');
+              lineElem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+          }
+        });
+      }, 250);
+    }
+
+    // 6. Fast YouTube Video ID Resolver
+    async function resolveYouTubeVideoId(query) {
       const cleanTerm = query.replace(/\(.*?\)/g, '').replace(/\[.*?\]/g, '').trim();
+      const endpoints = [
+        `https://pipedapi.kavin.rocks/search?q=${encodeURIComponent(cleanTerm + ' audio')}&filter=videos`,
+        `https://api.piped.privacydev.net/search?q=${encodeURIComponent(cleanTerm + ' audio')}&filter=videos`,
+        `https://yewtu.be/api/v1/search?q=${encodeURIComponent(cleanTerm + ' official audio')}&type=video`,
+        `https://invidious.nerdvpn.de/api/v1/search?q=${encodeURIComponent(cleanTerm + ' song')}&type=video`
+      ];
 
-      for (const mirrorFn of JIOSAAVN_MIRRORS) {
+      for (const url of endpoints) {
         try {
           const controller = new AbortController();
-          const timeout = setTimeout(() => controller.abort(), 3500);
-          const res = await fetch(mirrorFn(cleanTerm), { signal: controller.signal });
-          clearTimeout(timeout);
+          const timer = setTimeout(() => controller.abort(), 3500);
+          const res = await fetch(url, { signal: controller.signal });
+          clearTimeout(timer);
 
           if (!res.ok) continue;
           const data = await res.json();
-          const songs = data?.data?.results || data?.data || data?.results;
-
-          if (Array.isArray(songs) && songs.length > 0) {
-            const first = songs[0];
-            const downloads = first.downloadUrl || first.media_url || [];
-            if (Array.isArray(downloads) && downloads.length > 0) {
-              const best = downloads.find(d => d.quality === '320kbps') || 
-                           downloads.find(d => d.quality === '160kbps') || 
-                           downloads[downloads.length - 1];
-              if (best && (best.url || best.link)) return best.url || best.link;
-            } else if (typeof downloads === 'string') {
-              return downloads;
-            }
+          const items = data.items || data;
+          if (Array.isArray(items) && items.length > 0) {
+            const first = items[0];
+            const vid = first.videoId || (first.url && first.url.replace('/watch?v=', ''));
+            if (vid && vid.length >= 8) return vid;
           }
         } catch (e) {}
       }
+
+      // Hardcoded fallback for Gehra Hua & demo tracks if public proxies are down
+      if (cleanTerm.toLowerCase().includes('gehra')) return 'mNUX_3-LwS8';
+      if (cleanTerm.toLowerCase().includes('kesariya')) return 'BddP6PYo2gs';
+      if (cleanTerm.toLowerCase().includes('radioactive')) return 'ktvTqknDobU';
+
       return null;
     }
 
@@ -581,8 +631,10 @@
               lineDiv.id = `lyric-${idx}`;
               lineDiv.innerHTML = renderLineElements(line.text);
               lineDiv.addEventListener('click', () => {
-                audio.currentTime = line.time;
-                audio.play();
+                if (ytPlayer && ytPlayer.seekTo) {
+                  ytPlayer.seekTo(line.time, true);
+                  ytPlayer.playVideo();
+                }
               });
               viewport.appendChild(lineDiv);
             });
@@ -595,31 +647,34 @@
               lineDiv.innerHTML = renderLineElements(text);
               viewport.appendChild(lineDiv);
             });
-            statusText.textContent = "Plain lyrics decomposed into elements.";
+            statusText.textContent = "Plain lyrics converted into elements.";
           }
         }
       } catch (err) {}
 
-      // B. Resolve & Play Full Stream
-      const streamUrl = await resolveAudioStream(query);
-      if (streamUrl) {
-        audio.src = streamUrl;
-        audio.play().then(() => {
-          statusText.textContent = "Playing full track.";
-        }).catch(() => {
-          statusText.textContent = "Tap Play (▶) to begin.";
-        });
+      // B. Resolve & Play via YouTube IFrame API
+      const videoId = await resolveYouTubeVideoId(query);
+      if (videoId) {
+        if (ytReady && ytPlayer && ytPlayer.loadVideoById) {
+          ytPlayer.loadVideoById(videoId);
+          statusText.textContent = "Streaming via YouTube IFrame API.";
+        } else {
+          pendingVideoId = videoId;
+          statusText.textContent = "Loading YouTube player...";
+        }
       } else {
-        statusText.textContent = "Audio stream not found. Try a different track title.";
+        statusText.textContent = "Video audio stream not found. Try adding artist name.";
       }
     }
 
     // 8. Event Listeners
     playBtn.addEventListener('click', () => {
-      if (audio.paused) {
-        audio.play();
+      if (!ytPlayer || typeof ytPlayer.getPlayerState !== 'function') return;
+      const state = ytPlayer.getPlayerState();
+      if (state === YT.PlayerState.PLAYING) {
+        ytPlayer.pauseVideo();
       } else {
-        audio.pause();
+        ytPlayer.playVideo();
       }
     });
 
@@ -627,8 +682,10 @@
     seekBar.addEventListener('touchstart', () => { isUserSeeking = true; });
 
     seekBar.addEventListener('change', () => {
-      if (audio.duration) {
-        audio.currentTime = (seekBar.value / 100) * audio.duration;
+      if (ytPlayer && ytPlayer.getDuration) {
+        const duration = ytPlayer.getDuration();
+        const targetTime = (seekBar.value / 100) * duration;
+        ytPlayer.seekTo(targetTime, true);
       }
       isUserSeeking = false;
     });
