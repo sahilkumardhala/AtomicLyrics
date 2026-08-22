@@ -9,6 +9,7 @@
       --bg: #090e17;
       --card-bg: #111927;
       --accent: #38bdf8;
+      --accent-hover: #0284c7;
       --border: #1e293b;
       --text: #f8fafc;
       --text-muted: #64748b;
@@ -70,7 +71,17 @@
       text-overflow: ellipsis;
     }
 
-    /* Lyrics Display Area */
+    /* YouTube IFrame Mount (Kept tiny & offscreen to maintain API activity) */
+    #yt-player-container {
+      position: absolute;
+      top: -9999px;
+      left: -9999px;
+      width: 200px;
+      height: 200px;
+      pointer-events: none;
+    }
+
+    /* Main Scrolling Lyrics Area */
     #lyrics-viewport {
       flex: 1;
       overflow-y: auto;
@@ -167,7 +178,7 @@
       padding: 0 2px;
     }
 
-    /* Results Picker Dropdown Sheet */
+    /* Search Results Dropdown */
     #search-results-modal {
       position: fixed;
       top: 60px;
@@ -344,21 +355,22 @@
   <header>
     <span class="logo-badge">AtomicLyrics</span>
     <div class="track-meta">
-      <div class="status-label">PLAYING SONG</div>
-      <div class="song-title" id="track-name">Search a song to play</div>
+      <div class="status-label">CURRENT TRACK</div>
+      <div class="song-title" id="track-name">Search any song below...</div>
     </div>
   </header>
 
-  <!-- Track Selection Overlay -->
-  <div id="search-results-modal"></div>
+  <!-- YouTube IFrame API Target Element -->
+  <div id="yt-player-container">
+    <div id="yt-iframe-target"></div>
+  </div>
 
-  <!-- HTML5 Native Audio Engine -->
-  <audio id="audio-engine" preload="auto"></audio>
+  <div id="search-results-modal"></div>
 
   <!-- Lyrics Container -->
   <main id="lyrics-viewport">
     <p style="color: var(--text-muted); margin-top: 40px; text-align: center;">
-      Enter any track name below and choose the matching song.
+      Search any song title below to play through YouTube & render periodic lyrics.
     </p>
   </main>
 
@@ -372,7 +384,7 @@
       </div>
 
       <div class="search-row">
-        <input type="text" id="search-input" placeholder="Search song (e.g., 'Gehra Hua', 'Radioactive')..." />
+        <input type="text" id="search-input" placeholder="Search track name..." />
         <button class="search-btn" id="search-btn">Search</button>
       </div>
 
@@ -412,12 +424,13 @@
       I: { n: 53, name: "Iodine" }, XE: { n: 54, name: "Xenon" },
       CS: { n: 55, name: "Cesium" }, BA: { n: 56, name: "Barium" },
       LA: { n: 57, name: "Lanthan" }, CE: { n: 58, name: "Cerium" },
+      PR: { n: 59, name: "Praseo" }, ND: { n: 60, name: "Neodym" },
       AU: { n: 79, name: "Gold" }, HG: { n: 80, name: "Mercury" },
       PB: { n: 82, name: "Lead" }, U: { n: 92, name: "Uraniu" },
       PU: { n: 94, name: "Pluton" }
     };
 
-    // 2. DP Backtracking Solver
+    // 2. DP Backtracking Solver for Chemical Spelling
     function findOptimalDecomposition(word) {
       const memo = new Map();
 
@@ -516,8 +529,12 @@
       return result.sort((a, b) => a.time - b.time);
     }
 
-    // 4. UI & Audio State
-    const audio = document.getElementById('audio-engine');
+    // 4. YouTube IFrame API Initialization
+    let ytPlayer = null;
+    let syncInterval = null;
+    let lyricsData = [];
+    let isUserSeeking = false;
+
     const playBtn = document.getElementById('toggle-play-btn');
     const seekBar = document.getElementById('seek-bar');
     const timeDisplay = document.getElementById('time-display');
@@ -526,8 +543,36 @@
     const viewport = document.getElementById('lyrics-viewport');
     const resultsModal = document.getElementById('search-results-modal');
 
-    let lyricsData = [];
-    let isUserSeeking = false;
+    // Dynamically Inject YouTube IFrame API Script Tag
+    const ytScript = document.createElement('script');
+    ytScript.src = "https://www.youtube.com/iframe_api";
+    document.head.appendChild(ytScript);
+
+    window.onYouTubeIframeAPIReady = function() {
+      ytPlayer = new YT.Player('yt-iframe-target', {
+        height: '200',
+        width: '200',
+        playerVars: {
+          'autoplay': 1,
+          'controls': 0,
+          'playsinline': 1,
+          'origin': window.location.origin
+        },
+        events: {
+          'onStateChange': onPlayerStateChange
+        }
+      });
+    };
+
+    function onPlayerStateChange(event) {
+      if (event.data === YT.PlayerState.PLAYING) {
+        playBtn.textContent = '⏸';
+        startSyncLoop();
+      } else {
+        playBtn.textContent = '▶';
+        clearInterval(syncInterval);
+      }
+    }
 
     function formatTime(seconds) {
       const mins = Math.floor(seconds / 60) || 0;
@@ -535,35 +580,37 @@
       return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
     }
 
-    audio.addEventListener('play', () => { playBtn.textContent = '⏸'; });
-    audio.addEventListener('pause', () => { playBtn.textContent = '▶'; });
+    function startSyncLoop() {
+      clearInterval(syncInterval);
+      syncInterval = setInterval(() => {
+        if (!ytPlayer || typeof ytPlayer.getCurrentTime !== 'function') return;
 
-    audio.addEventListener('timeupdate', () => {
-      const currentSec = audio.currentTime;
-      const duration = audio.duration || 0;
+        const currentSec = ytPlayer.getCurrentTime() || 0;
+        const duration = ytPlayer.getDuration() || 0;
 
-      if (!isUserSeeking && duration > 0) {
-        seekBar.value = (currentSec / duration) * 100;
-        timeDisplay.textContent = `${formatTime(currentSec)} / ${formatTime(duration)}`;
-      }
-
-      if (lyricsData.length === 0) return;
-
-      lyricsData.forEach((line, idx) => {
-        const nextLine = lyricsData[idx + 1];
-        const lineElem = document.getElementById(`lyric-${idx}`);
-
-        if (currentSec >= line.time && (!nextLine || currentSec < nextLine.time)) {
-          if (lineElem && !lineElem.classList.contains('active')) {
-            document.querySelectorAll('.lyric-line').forEach(el => el.classList.remove('active'));
-            lineElem.classList.add('active');
-            lineElem.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          }
+        if (!isUserSeeking && duration > 0) {
+          seekBar.value = (currentSec / duration) * 100;
+          timeDisplay.textContent = `${formatTime(currentSec)} / ${formatTime(duration)}`;
         }
-      });
-    });
 
-    // 5. Query Search & Modal Picker
+        if (lyricsData.length === 0) return;
+
+        lyricsData.forEach((line, idx) => {
+          const nextLine = lyricsData[idx + 1];
+          const lineElem = document.getElementById(`lyric-${idx}`);
+
+          if (currentSec >= line.time && (!nextLine || currentSec < nextLine.time)) {
+            if (lineElem && !lineElem.classList.contains('active')) {
+              document.querySelectorAll('.lyric-line').forEach(el => el.classList.remove('active'));
+              lineElem.classList.add('active');
+              lineElem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+          }
+        });
+      }, 250);
+    }
+
+    // 5. Search Execution & Track Picker
     async function executeSearch(query) {
       statusText.textContent = `Searching for "${query}"...`;
       resultsModal.innerHTML = '';
@@ -578,7 +625,6 @@
           return;
         }
 
-        // Show matches in modal dropdown
         resultsModal.style.display = 'block';
         tracks.slice(0, 6).forEach(track => {
           const item = document.createElement('div');
@@ -605,7 +651,7 @@
       viewport.innerHTML = '';
       lyricsData = [];
 
-      // Render Lyrics
+      // Render Synced/Plain Lyrics
       if (track.syncedLyrics) {
         lyricsData = parseLRC(track.syncedLyrics);
         lyricsData.forEach((line, idx) => {
@@ -614,8 +660,10 @@
           lineDiv.id = `lyric-${idx}`;
           lineDiv.innerHTML = renderLineElements(line.text);
           lineDiv.addEventListener('click', () => {
-            audio.currentTime = line.time;
-            audio.play();
+            if (ytPlayer && ytPlayer.seekTo) {
+              ytPlayer.seekTo(line.time, true);
+              ytPlayer.playVideo();
+            }
           });
           viewport.appendChild(lineDiv);
         });
@@ -631,40 +679,26 @@
         statusText.textContent = "Plain lyrics without timestamps.";
       }
 
-      // Resolve Accurate Audio Stream
-      const exactQuery = `${track.trackName} ${track.artistName} audio`;
-      try {
-        const streamSearch = await fetch(`https://pipedapi.kavin.rocks/search?q=${encodeURIComponent(exactQuery)}&filter=music_songs`);
-        const data = await streamSearch.json();
-
-        if (data.items && data.items.length > 0) {
-          const videoId = data.items[0].url.replace('/watch?v=', '');
-          const details = await (await fetch(`https://pipedapi.kavin.rocks/streams/${videoId}`)).json();
-          if (details.audioStreams && details.audioStreams.length > 0) {
-            audio.src = details.audioStreams[0].url;
-            audio.play().catch(() => {
-              statusText.textContent = "Tap Play (▶) to start.";
-            });
-            return;
-          }
-        }
-      } catch (e) {
-        console.warn("Direct stream resolution fallback active.");
+      // Load YouTube Track via YouTube IFrame API Search Playlist
+      if (ytPlayer && ytPlayer.loadPlaylist) {
+        ytPlayer.loadPlaylist({
+          listType: 'search',
+          list: `${track.artistName} ${track.trackName} audio`,
+          index: 0,
+          startSeconds: 0
+        });
+        statusText.textContent = "Loading YouTube audio...";
       }
-
-      // Fallback Demo Audio
-      audio.src = "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3";
-      audio.play().catch(() => {
-        statusText.textContent = "Tap Play (▶) to start.";
-      });
     }
 
     // 6. User Control Listeners
     playBtn.addEventListener('click', () => {
-      if (audio.paused) {
-        audio.play();
+      if (!ytPlayer || typeof ytPlayer.getPlayerState !== 'function') return;
+      const state = ytPlayer.getPlayerState();
+      if (state === YT.PlayerState.PLAYING) {
+        ytPlayer.pauseVideo();
       } else {
-        audio.pause();
+        ytPlayer.playVideo();
       }
     });
 
@@ -672,8 +706,10 @@
     seekBar.addEventListener('touchstart', () => { isUserSeeking = true; });
 
     seekBar.addEventListener('change', () => {
-      if (audio.duration) {
-        audio.currentTime = (seekBar.value / 100) * audio.duration;
+      if (ytPlayer && ytPlayer.getDuration) {
+        const duration = ytPlayer.getDuration();
+        const targetTime = (seekBar.value / 100) * duration;
+        ytPlayer.seekTo(targetTime, true);
       }
       isUserSeeking = false;
     });
