@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>AtomicLyrics — Dynamic YouTube Player</title>
+<title>AtomicLyrics — YouTube Periodic Player</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
@@ -169,7 +169,7 @@
     padding: 0 2px;
   }
 
-  /* Persistent Video Holder */
+  /* Mini YouTube IFrame Container */
   .yt-container {
     position: fixed;
     bottom: calc(var(--dock-h) + 12px);
@@ -495,7 +495,7 @@
     // 5. YouTube Player Controller
     let ytPlayer = null;
     let ytReady = false;
-    let pendingVideoId = null;
+    let pendingAction = null;
     let syncInterval = null;
     let lyricsData = [];
     let isUserSeeking = false;
@@ -523,9 +523,9 @@
         events: {
           'onReady': () => {
             ytReady = true;
-            if (pendingVideoId) {
-              ytPlayer.loadVideoById(pendingVideoId);
-              pendingVideoId = null;
+            if (pendingAction) {
+              pendingAction();
+              pendingAction = null;
             }
           },
           'onStateChange': onPlayerStateChange,
@@ -548,16 +548,19 @@
       }
     }
 
-    // Automatic Error 150/101 Fallback Recovery
+    // Error recovery: Auto-cycles to next candidate if blocked by copyright (Error 150/101)
     function onPlayerError(e) {
-      console.warn('YouTube playback error:', e.data);
+      console.warn('YouTube Error:', e.data);
       if (currentCandidateIndex < candidateVideoIds.length - 1) {
         currentCandidateIndex++;
         statusText.textContent = `Retrying with alternate stream (${currentCandidateIndex + 1}/${candidateVideoIds.length})...`;
         ytPlayer.loadVideoById(candidateVideoIds[currentCandidateIndex]);
         ytPlayer.playVideo();
       } else {
-        statusText.textContent = 'Playback blocked by copyright owner. Try another song.';
+        // Fallback directly to native YouTube search cueing
+        if (typeof ytPlayer.nextVideo === 'function') {
+          ytPlayer.nextVideo();
+        }
       }
     }
 
@@ -597,17 +600,32 @@
       }, 250);
     }
 
-    // 6. Backend API Video Search Resolver
-    async function resolveYouTubeVideoIds(query) {
-      try {
-        const res = await fetch(`/search?q=${encodeURIComponent(query)}`);
-        const data = await res.json();
-        if (data.videoIds && data.videoIds.length > 0) {
-          return data.videoIds;
-        }
-      } catch (e) {
-        console.error('Backend search request error:', e);
+    // 6. Direct Client-Side YouTube Search Resolver (Multi-Mirror)
+    async function resolveYouTubeVideoIdsClient(query) {
+      const cleanTerm = query.replace(/\(.*?\)/g, '').replace(/\[.*?\]/g, '').trim();
+      const endpoints = [
+        `https://inv.tux.pizza/api/v1/search?q=${encodeURIComponent(cleanTerm + ' audio lyric')}&type=video`,
+        `https://iv.ggtyler.dev/api/v1/search?q=${encodeURIComponent(cleanTerm + ' audio')}&type=video`,
+        `https://yewtu.be/api/v1/search?q=${encodeURIComponent(cleanTerm + ' lyric')}&type=video`,
+        `https://invidious.asir.dev/api/v1/search?q=${encodeURIComponent(cleanTerm)}&type=video`
+      ];
+
+      for (const url of endpoints) {
+        try {
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), 2500);
+          const res = await fetch(url, { signal: controller.signal });
+          clearTimeout(timer);
+
+          if (!res.ok) continue;
+          const items = await res.json();
+          if (Array.isArray(items) && items.length > 0) {
+            const vids = items.map(it => it.videoId).filter(Boolean);
+            if (vids.length > 0) return vids;
+          }
+        } catch (e) {}
       }
+
       return [];
     }
 
@@ -620,7 +638,7 @@
       trackName.textContent = query;
       lyricsData = [];
 
-      // Fetch Synced Lyrics from LRCLIB
+      // A. Fetch Synced Lyrics from LRCLIB
       try {
         const lrcRes = await fetch(`https://lrclib.net/api/search?q=${encodeURIComponent(query)}`);
         const lrcList = await lrcRes.json();
@@ -651,20 +669,27 @@
         console.error('Lyrics error:', err);
       }
 
-      // Fetch Video Candidates from Backend
-      candidateVideoIds = await resolveYouTubeVideoIds(query);
+      // B. Resolve & Play via YouTube IFrame
+      candidateVideoIds = await resolveYouTubeVideoIdsClient(query);
       currentCandidateIndex = 0;
 
-      if (candidateVideoIds.length > 0) {
-        const firstVid = candidateVideoIds[0];
-        if (ytReady && ytPlayer && typeof ytPlayer.loadVideoById === 'function') {
-          ytPlayer.loadVideoById(firstVid);
+      const executePlay = () => {
+        if (candidateVideoIds.length > 0) {
+          ytPlayer.loadVideoById(candidateVideoIds[0]);
           ytPlayer.playVideo();
         } else {
-          pendingVideoId = firstVid;
+          // Native YouTube Search fallback when all proxies are unreachable
+          ytPlayer.loadPlaylist({
+            listType: 'search',
+            list: `${query} audio lyric`
+          });
         }
+      };
+
+      if (ytReady && ytPlayer) {
+        executePlay();
       } else {
-        statusText.textContent = 'No playable streams found.';
+        pendingAction = executePlay;
       }
     }
 
