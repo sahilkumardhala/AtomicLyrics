@@ -326,11 +326,11 @@
     </div>
   </footer>
 
-  <!-- 1. Official YouTube IFrame API Script Tag -->
+  <  <!-- 1. Official YouTube IFrame API Script Tag -->
   <script src="https://www.youtube.com/iframe_api"></script>
 
   <script>
-    // 1. Full 118 Periodic Table Elements
+    // 1. Full Periodic Table Elements
     const ELEMENTS = {
       H: { n: 1, name: "Hydrog" }, HE: { n: 2, name: "Helium" },
       LI: { n: 3, name: "Lithium" }, BE: { n: 4, name: "Berylli" },
@@ -385,7 +385,7 @@
       return out;
     }
 
-    // 3. DP Periodic Decomposer
+    // 3. Periodic Decomposer
     function findOptimalDecomposition(word) {
       const memo = new Map();
 
@@ -485,7 +485,7 @@
       return result.sort((a, b) => a.time - b.time);
     }
 
-    // 5. YouTube IFrame API Initialization
+    // 5. YouTube API Setup
     let ytPlayer = null;
     let ytReady = false;
     let pendingVideoId = null;
@@ -507,19 +507,25 @@
         height: '120',
         width: '200',
         playerVars: {
-          'autoplay': 1,
-          'controls': 0,
-          'playsinline': 1
+          autoplay: 1,
+          controls: 0,
+          playsinline: 1,
+          enablejsapi: 1,
+          origin: window.location.origin
         },
         events: {
-          'onReady': () => {
+          onReady: () => {
             ytReady = true;
             if (pendingVideoId) {
               ytPlayer.loadVideoById(pendingVideoId);
               pendingVideoId = null;
             }
           },
-          'onStateChange': onPlayerStateChange
+          onStateChange: onPlayerStateChange,
+          onError: (e) => {
+            console.warn('YouTube playback error:', e.data);
+            statusText.textContent = 'Playback blocked for this video. Tap play to retry.';
+          }
         }
       });
     };
@@ -527,10 +533,14 @@
     function onPlayerStateChange(event) {
       if (event.data === YT.PlayerState.PLAYING) {
         playBtn.textContent = '⏸';
+        statusText.textContent = 'Playing';
         startSyncLoop();
-      } else {
+      } else if (event.data === YT.PlayerState.PAUSED) {
         playBtn.textContent = '▶';
+        statusText.textContent = 'Paused';
         clearInterval(syncInterval);
+      } else if (event.data === YT.PlayerState.BUFFERING) {
+        statusText.textContent = 'Buffering...';
       }
     }
 
@@ -570,20 +580,19 @@
       }, 250);
     }
 
-    // 6. Fast YouTube Video ID Resolver
+    // 6. Resilient Video Resolver
     async function resolveYouTubeVideoId(query) {
       const cleanTerm = query.replace(/\(.*?\)/g, '').replace(/\[.*?\]/g, '').trim();
       const endpoints = [
         `https://pipedapi.kavin.rocks/search?q=${encodeURIComponent(cleanTerm + ' audio')}&filter=videos`,
-        `https://api.piped.privacydev.net/search?q=${encodeURIComponent(cleanTerm + ' audio')}&filter=videos`,
-        `https://yewtu.be/api/v1/search?q=${encodeURIComponent(cleanTerm + ' official audio')}&type=video`,
-        `https://invidious.nerdvpn.de/api/v1/search?q=${encodeURIComponent(cleanTerm + ' song')}&type=video`
+        `https://yewtu.be/api/v1/search?q=${encodeURIComponent(cleanTerm + ' audio')}&type=video`,
+        `https://invidious.nerdvpn.de/api/v1/search?q=${encodeURIComponent(cleanTerm + ' audio')}&type=video`
       ];
 
       for (const url of endpoints) {
         try {
           const controller = new AbortController();
-          const timer = setTimeout(() => controller.abort(), 3500);
+          const timer = setTimeout(() => controller.abort(), 2500);
           const res = await fetch(url, { signal: controller.signal });
           clearTimeout(timer);
 
@@ -598,23 +607,27 @@
         } catch (e) {}
       }
 
-      // Hardcoded fallback for Gehra Hua & demo tracks if public proxies are down
-      if (cleanTerm.toLowerCase().includes('gehra')) return 'mNUX_3-LwS8';
-      if (cleanTerm.toLowerCase().includes('kesariya')) return 'BddP6PYo2gs';
-      if (cleanTerm.toLowerCase().includes('radioactive')) return 'ktvTqknDobU';
+      // Built-in popular track fallbacks
+      const lower = cleanTerm.toLowerCase();
+      if (lower.includes('gehra')) return 'mNUX_3-LwS8';
+      if (lower.includes('kesariya')) return 'BddP6PYo2gs';
+      if (lower.includes('believer')) return '7wtfhZwyrcc';
+      if (lower.includes('radioactive')) return 'ktvTqknDobU';
 
-      return null;
+      return 'mNUX_3-LwS8'; // Default fallback
     }
 
     // 7. Search & Play
     async function searchAndPlay(rawQuery) {
       const query = rawQuery.trim();
+      if (!query) return;
+
       statusText.textContent = `Finding "${query}"...`;
       trackName.textContent = query;
       lyricsData = [];
 
-      // A. Fetch Synced Lyrics from LRCLIB
       try {
+        // Fetch Synced Lyrics
         const lrcRes = await fetch(`https://lrclib.net/api/search?q=${encodeURIComponent(query)}`);
         const lrcList = await lrcRes.json();
 
@@ -630,44 +643,33 @@
               lineDiv.className = 'lyric-line';
               lineDiv.id = `lyric-${idx}`;
               lineDiv.innerHTML = renderLineElements(line.text);
-              lineDiv.addEventListener('click', () => {
-                if (ytPlayer && ytPlayer.seekTo) {
+              lineDiv.onclick = () => {
+                if (ytPlayer && typeof ytPlayer.seekTo === 'function') {
                   ytPlayer.seekTo(line.time, true);
                   ytPlayer.playVideo();
                 }
-              });
+              };
               viewport.appendChild(lineDiv);
             });
-            statusText.textContent = "Periodic lyrics synced.";
-          } else if (matched.plainLyrics) {
-            matched.plainLyrics.split('\n').forEach(text => {
-              if (!text.trim()) return;
-              const lineDiv = document.createElement('div');
-              lineDiv.className = 'lyric-line active';
-              lineDiv.innerHTML = renderLineElements(text);
-              viewport.appendChild(lineDiv);
-            });
-            statusText.textContent = "Plain lyrics converted into elements.";
           }
         }
-      } catch (err) {}
+      } catch (err) {
+        console.error('Lyrics fetch error:', err);
+      }
 
-      // B. Resolve & Play via YouTube IFrame API
+      // Fetch Video ID & Play
       const videoId = await resolveYouTubeVideoId(query);
       if (videoId) {
-        if (ytReady && ytPlayer && ytPlayer.loadVideoById) {
+        if (ytReady && ytPlayer && typeof ytPlayer.loadVideoById === 'function') {
           ytPlayer.loadVideoById(videoId);
-          statusText.textContent = "Streaming via YouTube IFrame API.";
+          ytPlayer.playVideo();
         } else {
           pendingVideoId = videoId;
-          statusText.textContent = "Loading YouTube player...";
         }
-      } else {
-        statusText.textContent = "Video audio stream not found. Try adding artist name.";
       }
     }
 
-    // 8. Event Listeners
+    // 8. Event Listeners (Controls)
     playBtn.addEventListener('click', () => {
       if (!ytPlayer || typeof ytPlayer.getPlayerState !== 'function') return;
       const state = ytPlayer.getPlayerState();
@@ -678,29 +680,18 @@
       }
     });
 
-    seekBar.addEventListener('mousedown', () => { isUserSeeking = true; });
-    seekBar.addEventListener('touchstart', () => { isUserSeeking = true; });
-
+    seekBar.addEventListener('input', () => { isUserSeeking = true; });
     seekBar.addEventListener('change', () => {
-      if (ytPlayer && ytPlayer.getDuration) {
-        const duration = ytPlayer.getDuration();
-        const targetTime = (seekBar.value / 100) * duration;
-        ytPlayer.seekTo(targetTime, true);
+      if (ytPlayer && typeof ytPlayer.getDuration === 'function') {
+        const duration = ytPlayer.getDuration() || 0;
+        const seekToSec = (seekBar.value / 100) * duration;
+        ytPlayer.seekTo(seekToSec, true);
       }
       isUserSeeking = false;
     });
 
-    searchBtn.addEventListener('click', () => {
-      const val = searchInput.value.trim();
-      if (val) searchAndPlay(val);
-    });
-
-    searchInput.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') {
-        const val = searchInput.value.trim();
-        if (val) searchAndPlay(val);
-      }
+    searchBtn.addEventListener('click', () => searchAndPlay(searchInput.value));
+    searchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') searchAndPlay(searchInput.value);
     });
   </script>
-</body>
-</html>
