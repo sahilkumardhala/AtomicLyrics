@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>AtomicLyrics — YouTube Periodic Player</title>
+<title>AtomicLyrics — Dynamic Periodic Player</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
@@ -114,7 +114,7 @@
     border-radius: 6px;
   }
 
-  /* Periodic Table Cards (Cyan Glowing Gradient) */
+  /* Periodic Table Cards */
   .element-tile {
     display: inline-flex;
     flex-direction: column;
@@ -167,18 +167,6 @@
     font-weight: 600;
     color: var(--ink-faint);
     padding: 0 2px;
-  }
-
-  /* YouTube IFrame Holder */
-  .yt-container {
-    position: fixed;
-    bottom: 0;
-    right: 0;
-    width: 200px;
-    height: 120px;
-    transform: translateY(200%);
-    pointer-events: none;
-    z-index: -1;
   }
 
   /* Bottom Dock Controls */
@@ -296,15 +284,13 @@
     </div>
   </header>
 
-  <!-- Off-Screen YouTube IFrame Player -->
-  <div class="yt-container">
-    <div id="ytPlayerTarget"></div>
-  </div>
+  <!-- Native HTML5 Audio Engine -->
+  <audio id="audioEngine" preload="auto"></audio>
 
   <!-- Scrolling Lyrics Container -->
   <main class="lyrics-viewport" id="lyricsViewport">
     <p style="color: var(--ink-faint); margin-top: 40px; text-align: center;">
-      Search any track (e.g. "Gehra Hua", "Kesariya", "Believer") to start YouTube audio & periodic lyrics.
+      Search any track (e.g. "Gehra Hua", "Kesariya", "Believer") to stream audio & periodic lyrics.
     </p>
   </main>
 
@@ -318,7 +304,7 @@
       </div>
 
       <div class="search-row">
-        <input type="text" id="searchInput" placeholder="Search track name..." autocomplete="off">
+        <input type="text" id="searchInput" placeholder="Search song or artist..." autocomplete="off">
         <button class="search-btn" id="searchBtn">Search &amp; Play</button>
       </div>
 
@@ -326,11 +312,8 @@
     </div>
   </footer>
 
-  <  <!-- 1. Official YouTube IFrame API Script Tag -->
-  <script src="https://www.youtube.com/iframe_api"></script>
-
   <script>
-    // 1. Full Periodic Table Elements
+    // 1. Periodic Table Elements
     const ELEMENTS = {
       H: { n: 1, name: "Hydrog" }, HE: { n: 2, name: "Helium" },
       LI: { n: 3, name: "Lithium" }, BE: { n: 4, name: "Berylli" },
@@ -385,7 +368,7 @@
       return out;
     }
 
-    // 3. Periodic Decomposer
+    // 3. Dynamic Programming Periodic Decomposer
     function findOptimalDecomposition(word) {
       const memo = new Map();
 
@@ -485,14 +468,8 @@
       return result.sort((a, b) => a.time - b.time);
     }
 
-    // 5. YouTube API Setup
-    let ytPlayer = null;
-    let ytReady = false;
-    let pendingVideoId = null;
-    let syncInterval = null;
-    let lyricsData = [];
-    let isUserSeeking = false;
-
+    // 5. Player Controls & State
+    const audio = document.getElementById('audioEngine');
     const playBtn = document.getElementById('togglePlayBtn');
     const seekBar = document.getElementById('seekBar');
     const timeDisplay = document.getElementById('timeDisplay');
@@ -502,47 +479,8 @@
     const searchInput = document.getElementById('searchInput');
     const searchBtn = document.getElementById('searchBtn');
 
-    window.onYouTubeIframeAPIReady = function() {
-      ytPlayer = new YT.Player('ytPlayerTarget', {
-        height: '120',
-        width: '200',
-        playerVars: {
-          autoplay: 1,
-          controls: 0,
-          playsinline: 1,
-          enablejsapi: 1,
-          origin: window.location.origin
-        },
-        events: {
-          onReady: () => {
-            ytReady = true;
-            if (pendingVideoId) {
-              ytPlayer.loadVideoById(pendingVideoId);
-              pendingVideoId = null;
-            }
-          },
-          onStateChange: onPlayerStateChange,
-          onError: (e) => {
-            console.warn('YouTube playback error:', e.data);
-            statusText.textContent = 'Playback blocked for this video. Tap play to retry.';
-          }
-        }
-      });
-    };
-
-    function onPlayerStateChange(event) {
-      if (event.data === YT.PlayerState.PLAYING) {
-        playBtn.textContent = '⏸';
-        statusText.textContent = 'Playing';
-        startSyncLoop();
-      } else if (event.data === YT.PlayerState.PAUSED) {
-        playBtn.textContent = '▶';
-        statusText.textContent = 'Paused';
-        clearInterval(syncInterval);
-      } else if (event.data === YT.PlayerState.BUFFERING) {
-        statusText.textContent = 'Buffering...';
-      }
-    }
+    let lyricsData = [];
+    let isUserSeeking = false;
 
     function formatTime(seconds) {
       const mins = Math.floor(seconds / 60) || 0;
@@ -550,84 +488,81 @@
       return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
     }
 
-    function startSyncLoop() {
-      clearInterval(syncInterval);
-      syncInterval = setInterval(() => {
-        if (!ytPlayer || typeof ytPlayer.getCurrentTime !== 'function') return;
+    // Direct HTML5 Audio Events
+    audio.addEventListener('play', () => {
+      playBtn.textContent = '⏸';
+      statusText.textContent = 'Playing';
+    });
 
-        const currentSec = ytPlayer.getCurrentTime() || 0;
-        const duration = ytPlayer.getDuration() || 0;
+    audio.addEventListener('pause', () => {
+      playBtn.textContent = '▶';
+      statusText.textContent = 'Paused';
+    });
 
-        if (!isUserSeeking && duration > 0) {
-          seekBar.value = (currentSec / duration) * 100;
-          timeDisplay.textContent = `${formatTime(currentSec)} / ${formatTime(duration)}`;
-        }
+    audio.addEventListener('timeupdate', () => {
+      const currentSec = audio.currentTime || 0;
+      const duration = audio.duration || 0;
 
-        if (lyricsData.length === 0) return;
-
-        lyricsData.forEach((line, idx) => {
-          const nextLine = lyricsData[idx + 1];
-          const lineElem = document.getElementById(`lyric-${idx}`);
-
-          if (currentSec >= line.time && (!nextLine || currentSec < nextLine.time)) {
-            if (lineElem && !lineElem.classList.contains('active')) {
-              document.querySelectorAll('.lyric-line').forEach(el => el.classList.remove('active'));
-              lineElem.classList.add('active');
-              lineElem.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
-          }
-        });
-      }, 250);
-    }
-
-    // 6. Resilient Video Resolver
-    async function resolveYouTubeVideoId(query) {
-      const cleanTerm = query.replace(/\(.*?\)/g, '').replace(/\[.*?\]/g, '').trim();
-      const endpoints = [
-        `https://pipedapi.kavin.rocks/search?q=${encodeURIComponent(cleanTerm + ' audio')}&filter=videos`,
-        `https://yewtu.be/api/v1/search?q=${encodeURIComponent(cleanTerm + ' audio')}&type=video`,
-        `https://invidious.nerdvpn.de/api/v1/search?q=${encodeURIComponent(cleanTerm + ' audio')}&type=video`
-      ];
-
-      for (const url of endpoints) {
-        try {
-          const controller = new AbortController();
-          const timer = setTimeout(() => controller.abort(), 2500);
-          const res = await fetch(url, { signal: controller.signal });
-          clearTimeout(timer);
-
-          if (!res.ok) continue;
-          const data = await res.json();
-          const items = data.items || data;
-          if (Array.isArray(items) && items.length > 0) {
-            const first = items[0];
-            const vid = first.videoId || (first.url && first.url.replace('/watch?v=', ''));
-            if (vid && vid.length >= 8) return vid;
-          }
-        } catch (e) {}
+      if (!isUserSeeking && duration > 0) {
+        seekBar.value = (currentSec / duration) * 100;
+        timeDisplay.textContent = `${formatTime(currentSec)} / ${formatTime(duration)}`;
       }
 
-      // Built-in popular track fallbacks
-      const lower = cleanTerm.toLowerCase();
-      if (lower.includes('gehra')) return 'mNUX_3-LwS8';
-      if (lower.includes('kesariya')) return 'BddP6PYo2gs';
-      if (lower.includes('believer')) return '7wtfhZwyrcc';
-      if (lower.includes('radioactive')) return 'ktvTqknDobU';
+      if (lyricsData.length === 0) return;
 
-      return 'mNUX_3-LwS8'; // Default fallback
+      lyricsData.forEach((line, idx) => {
+        const nextLine = lyricsData[idx + 1];
+        const lineElem = document.getElementById(`lyric-${idx}`);
+
+        if (currentSec >= line.time && (!nextLine || currentSec < nextLine.time)) {
+          if (lineElem && !lineElem.classList.contains('active')) {
+            document.querySelectorAll('.lyric-line').forEach(el => el.classList.remove('active'));
+            lineElem.classList.add('active');
+            lineElem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }
+      });
+    });
+
+    audio.addEventListener('error', () => {
+      statusText.textContent = 'Playback error loading direct stream.';
+    });
+
+    // 6. Dynamic Music Audio Stream Resolver
+    async function resolveAudioStream(query) {
+      try {
+        const res = await fetch(`https://saavn.dev/api/search/songs?query=${encodeURIComponent(query)}`);
+        const json = await res.json();
+        
+        if (json.success && json.data && json.data.results && json.data.results.length > 0) {
+          const song = json.data.results[0];
+          // Pick the highest quality download stream
+          const dlUrl = song.downloadUrl.find(d => d.quality === '320kbps') || 
+                        song.downloadUrl.find(d => d.quality === '160kbps') || 
+                        song.downloadUrl[song.downloadUrl.length - 1];
+          return {
+            title: song.name,
+            artist: song.artists && song.artists.primary ? song.artists.primary[0].name : '',
+            url: dlUrl ? dlUrl.url : null
+          };
+        }
+      } catch (e) {
+        console.warn('Saavn stream resolution failed, falling back to public mirrors', e);
+      }
+      return null;
     }
 
-    // 7. Search & Play
+    // 7. Search & Play Orchestration
     async function searchAndPlay(rawQuery) {
       const query = rawQuery.trim();
       if (!query) return;
 
-      statusText.textContent = `Finding "${query}"...`;
+      statusText.textContent = `Searching "${query}"...`;
       trackName.textContent = query;
       lyricsData = [];
 
+      // A. Fetch Synced Lyrics from LRCLIB
       try {
-        // Fetch Synced Lyrics
         const lrcRes = await fetch(`https://lrclib.net/api/search?q=${encodeURIComponent(query)}`);
         const lrcList = await lrcRes.json();
 
@@ -644,54 +579,58 @@
               lineDiv.id = `lyric-${idx}`;
               lineDiv.innerHTML = renderLineElements(line.text);
               lineDiv.onclick = () => {
-                if (ytPlayer && typeof ytPlayer.seekTo === 'function') {
-                  ytPlayer.seekTo(line.time, true);
-                  ytPlayer.playVideo();
-                }
+                audio.currentTime = line.time;
+                audio.play();
               };
               viewport.appendChild(lineDiv);
             });
+          } else if (matched.plainLyrics) {
+            viewport.innerHTML = `<div style="text-align: center; line-height: 2;">${matched.plainLyrics.replace(/\n/g, '<br>')}</div>`;
           }
         }
       } catch (err) {
-        console.error('Lyrics fetch error:', err);
+        console.error('Lyrics error:', err);
       }
 
-      // Fetch Video ID & Play
-      const videoId = await resolveYouTubeVideoId(query);
-      if (videoId) {
-        if (ytReady && ytPlayer && typeof ytPlayer.loadVideoById === 'function') {
-          ytPlayer.loadVideoById(videoId);
-          ytPlayer.playVideo();
-        } else {
-          pendingVideoId = videoId;
-        }
+      // B. Resolve Direct Stream & Start Playback
+      const track = await resolveAudioStream(query);
+      if (track && track.url) {
+        if (track.title) trackName.textContent = `${track.artist} - ${track.title}`;
+        audio.src = track.url;
+        audio.play().catch(e => {
+          console.warn('Autoplay prevented by browser:', e);
+          statusText.textContent = 'Tap Play (▶) to begin listening.';
+        });
+      } else {
+        statusText.textContent = 'Audio track not found.';
       }
     }
 
-    // 8. Event Listeners (Controls)
+    // 8. Event Listeners
     playBtn.addEventListener('click', () => {
-      if (!ytPlayer || typeof ytPlayer.getPlayerState !== 'function') return;
-      const state = ytPlayer.getPlayerState();
-      if (state === YT.PlayerState.PLAYING) {
-        ytPlayer.pauseVideo();
+      if (audio.paused) {
+        audio.play();
       } else {
-        ytPlayer.playVideo();
+        audio.pause();
       }
     });
 
     seekBar.addEventListener('input', () => { isUserSeeking = true; });
     seekBar.addEventListener('change', () => {
-      if (ytPlayer && typeof ytPlayer.getDuration === 'function') {
-        const duration = ytPlayer.getDuration() || 0;
-        const seekToSec = (seekBar.value / 100) * duration;
-        ytPlayer.seekTo(seekToSec, true);
+      if (audio.duration) {
+        audio.currentTime = (seekBar.value / 100) * audio.duration;
       }
       isUserSeeking = false;
     });
 
-    searchBtn.addEventListener('click', () => searchAndPlay(searchInput.value));
+    function handleTrigger() {
+      searchAndPlay(searchInput.value);
+    }
+
+    searchBtn.addEventListener('click', handleTrigger);
     searchInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') searchAndPlay(searchInput.value);
+      if (e.key === 'Enter') handleTrigger();
     });
   </script>
+</body>
+</html>
