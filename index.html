@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>AtomicLyrics — Dynamic Periodic Player</title>
+<title>AtomicLyrics — Dynamic YouTube IFrame Player</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
@@ -114,7 +114,7 @@
     border-radius: 6px;
   }
 
-  /* Periodic Table Cards */
+  /* Periodic Table Tiles */
   .element-tile {
     display: inline-flex;
     flex-direction: column;
@@ -169,7 +169,26 @@
     padding: 0 2px;
   }
 
-  /* Bottom Dock Controls */
+  /* YouTube IFrame: Maintained with real dimensions so mobile browsers do not throttle */
+  .yt-container {
+    position: fixed;
+    bottom: calc(var(--dock-h) + 12px);
+    right: 12px;
+    width: 140px;
+    height: 80px;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--hairline);
+    background: #000;
+    z-index: 20;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  }
+  #ytPlayerTarget {
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Bottom Dock */
   footer.dock {
     position: fixed;
     bottom: 0;
@@ -284,13 +303,15 @@
     </div>
   </header>
 
-  <!-- Native HTML5 Audio Engine -->
-  <audio id="audioEngine" preload="auto"></audio>
+  <!-- Visible Mini YouTube IFrame Player -->
+  <div class="yt-container">
+    <div id="ytPlayerTarget"></div>
+  </div>
 
   <!-- Scrolling Lyrics Container -->
   <main class="lyrics-viewport" id="lyricsViewport">
     <p style="color: var(--ink-faint); margin-top: 40px; text-align: center;">
-      Search any track (e.g. "Gehra Hua", "Kesariya", "Believer") to stream audio & periodic lyrics.
+      Search any track (e.g. "Gehra Hua", "Kesariya", "Believer") to stream YouTube audio & periodic lyrics.
     </p>
   </main>
 
@@ -304,13 +325,16 @@
       </div>
 
       <div class="search-row">
-        <input type="text" id="searchInput" placeholder="Search song or artist..." autocomplete="off">
+        <input type="text" id="searchInput" placeholder="Search track or artist..." autocomplete="off">
         <button class="search-btn" id="searchBtn">Search &amp; Play</button>
       </div>
 
       <div class="status-text" id="statusDisplay">Ready</div>
     </div>
   </footer>
+
+  <!-- Official YouTube IFrame API -->
+  <script src="https://www.youtube.com/iframe_api"></script>
 
   <script>
     // 1. Periodic Table Elements
@@ -368,7 +392,7 @@
       return out;
     }
 
-    // 3. Dynamic Programming Periodic Decomposer
+    // 3. Periodic Decomposer
     function findOptimalDecomposition(word) {
       const memo = new Map();
 
@@ -468,8 +492,16 @@
       return result.sort((a, b) => a.time - b.time);
     }
 
-    // 5. Player Controls & State
-    const audio = document.getElementById('audioEngine');
+    // 5. YouTube IFrame Engine
+    let ytPlayer = null;
+    let ytReady = false;
+    let pendingVideoId = null;
+    let syncInterval = null;
+    let lyricsData = [];
+    let isUserSeeking = false;
+    let candidateIds = [];
+    let currentCandidateIdx = 0;
+
     const playBtn = document.getElementById('togglePlayBtn');
     const seekBar = document.getElementById('seekBar');
     const timeDisplay = document.getElementById('timeDisplay');
@@ -479,8 +511,55 @@
     const searchInput = document.getElementById('searchInput');
     const searchBtn = document.getElementById('searchBtn');
 
-    let lyricsData = [];
-    let isUserSeeking = false;
+    window.onYouTubeIframeAPIReady = function() {
+      ytPlayer = new YT.Player('ytPlayerTarget', {
+        playerVars: {
+          'autoplay': 1,
+          'controls': 0,
+          'playsinline': 1,
+          'enablejsapi': 1,
+          'origin': window.location.origin
+        },
+        events: {
+          'onReady': () => {
+            ytReady = true;
+            if (pendingVideoId) {
+              ytPlayer.loadVideoById(pendingVideoId);
+              pendingVideoId = null;
+            }
+          },
+          'onStateChange': onPlayerStateChange,
+          'onError': onPlayerError
+        }
+      });
+    };
+
+    function onPlayerStateChange(event) {
+      if (event.data === YT.PlayerState.PLAYING) {
+        playBtn.textContent = '⏸';
+        statusText.textContent = 'Playing';
+        startSyncLoop();
+      } else if (event.data === YT.PlayerState.PAUSED) {
+        playBtn.textContent = '▶';
+        statusText.textContent = 'Paused';
+        clearInterval(syncInterval);
+      } else if (event.data === YT.PlayerState.BUFFERING) {
+        statusText.textContent = 'Buffering stream...';
+      }
+    }
+
+    // Handle Embed Block Error 101/150 Automatically
+    function onPlayerError(e) {
+      console.warn('YouTube playback error code:', e.data);
+      if (currentCandidateIdx < candidateIds.length - 1) {
+        currentCandidateIdx++;
+        statusText.textContent = `Retrying with alternate upload (${currentCandidateIdx + 1}/${candidateIds.length})...`;
+        ytPlayer.loadVideoById(candidateIds[currentCandidateIdx]);
+        ytPlayer.playVideo();
+      } else {
+        statusText.textContent = 'Playback restricted by copyright holder. Try another search.';
+      }
+    }
 
     function formatTime(seconds) {
       const mins = Math.floor(seconds / 60) || 0;
@@ -488,71 +567,68 @@
       return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
     }
 
-    // Direct HTML5 Audio Events
-    audio.addEventListener('play', () => {
-      playBtn.textContent = '⏸';
-      statusText.textContent = 'Playing';
-    });
+    function startSyncLoop() {
+      clearInterval(syncInterval);
+      syncInterval = setInterval(() => {
+        if (!ytPlayer || typeof ytPlayer.getCurrentTime !== 'function') return;
 
-    audio.addEventListener('pause', () => {
-      playBtn.textContent = '▶';
-      statusText.textContent = 'Paused';
-    });
+        const currentSec = ytPlayer.getCurrentTime() || 0;
+        const duration = ytPlayer.getDuration() || 0;
 
-    audio.addEventListener('timeupdate', () => {
-      const currentSec = audio.currentTime || 0;
-      const duration = audio.duration || 0;
+        if (!isUserSeeking && duration > 0) {
+          seekBar.value = (currentSec / duration) * 100;
+          timeDisplay.textContent = `${formatTime(currentSec)} / ${formatTime(duration)}`;
+        }
 
-      if (!isUserSeeking && duration > 0) {
-        seekBar.value = (currentSec / duration) * 100;
-        timeDisplay.textContent = `${formatTime(currentSec)} / ${formatTime(duration)}`;
-      }
+        if (lyricsData.length === 0) return;
 
-      if (lyricsData.length === 0) return;
+        lyricsData.forEach((line, idx) => {
+          const nextLine = lyricsData[idx + 1];
+          const lineElem = document.getElementById(`lyric-${idx}`);
 
-      lyricsData.forEach((line, idx) => {
-        const nextLine = lyricsData[idx + 1];
-        const lineElem = document.getElementById(`lyric-${idx}`);
-
-        if (currentSec >= line.time && (!nextLine || currentSec < nextLine.time)) {
-          if (lineElem && !lineElem.classList.contains('active')) {
-            document.querySelectorAll('.lyric-line').forEach(el => el.classList.remove('active'));
-            lineElem.classList.add('active');
-            lineElem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          if (currentSec >= line.time && (!nextLine || currentSec < nextLine.time)) {
+            if (lineElem && !lineElem.classList.contains('active')) {
+              document.querySelectorAll('.lyric-line').forEach(el => el.classList.remove('active'));
+              lineElem.classList.add('active');
+              lineElem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
           }
-        }
-      });
-    });
-
-    audio.addEventListener('error', () => {
-      statusText.textContent = 'Playback error loading direct stream.';
-    });
-
-    // 6. Dynamic Music Audio Stream Resolver
-    async function resolveAudioStream(query) {
-      try {
-        const res = await fetch(`https://saavn.dev/api/search/songs?query=${encodeURIComponent(query)}`);
-        const json = await res.json();
-        
-        if (json.success && json.data && json.data.results && json.data.results.length > 0) {
-          const song = json.data.results[0];
-          // Pick the highest quality download stream
-          const dlUrl = song.downloadUrl.find(d => d.quality === '320kbps') || 
-                        song.downloadUrl.find(d => d.quality === '160kbps') || 
-                        song.downloadUrl[song.downloadUrl.length - 1];
-          return {
-            title: song.name,
-            artist: song.artists && song.artists.primary ? song.artists.primary[0].name : '',
-            url: dlUrl ? dlUrl.url : null
-          };
-        }
-      } catch (e) {
-        console.warn('Saavn stream resolution failed, falling back to public mirrors', e);
-      }
-      return null;
+        });
+      }, 250);
     }
 
-    // 7. Search & Play Orchestration
+    // 6. Dynamic Video ID Search Resolver
+    async function resolveYouTubeVideoIds(query) {
+      const cleanTerm = query.replace(/\(.*?\)/g, '').replace(/\[.*?\]/g, '').trim();
+      const endpoints = [
+        `https://pipedapi.kavin.rocks/search?q=${encodeURIComponent(cleanTerm + ' audio lyric')}&filter=videos`,
+        `https://api.piped.privacydev.net/search?q=${encodeURIComponent(cleanTerm + ' audio')}&filter=videos`,
+        `https://yewtu.be/api/v1/search?q=${encodeURIComponent(cleanTerm + ' song')}&type=video`,
+        `https://invidious.nerdvpn.de/api/v1/search?q=${encodeURIComponent(cleanTerm)}&type=video`
+      ];
+
+      for (const url of endpoints) {
+        try {
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), 3000);
+          const res = await fetch(url, { signal: controller.signal });
+          clearTimeout(timer);
+
+          if (!res.ok) continue;
+          const data = await res.json();
+          const items = data.items || data;
+          if (Array.isArray(items) && items.length > 0) {
+            const vids = items.map(it => it.videoId || (it.url && it.url.replace('/watch?v=', ''))).filter(Boolean);
+            if (vids.length > 0) return vids;
+          }
+        } catch (e) {}
+      }
+
+      // Default dynamic fallback
+      return ['7wtfhZwyrcc', 'ktvTqknDobU'];
+    }
+
+    // 7. Search & Play Controller
     async function searchAndPlay(rawQuery) {
       const query = rawQuery.trim();
       if (!query) return;
@@ -579,51 +655,60 @@
               lineDiv.id = `lyric-${idx}`;
               lineDiv.innerHTML = renderLineElements(line.text);
               lineDiv.onclick = () => {
-                audio.currentTime = line.time;
-                audio.play();
+                if (ytPlayer && typeof ytPlayer.seekTo === 'function') {
+                  ytPlayer.seekTo(line.time, true);
+                  ytPlayer.playVideo();
+                }
               };
               viewport.appendChild(lineDiv);
             });
-          } else if (matched.plainLyrics) {
-            viewport.innerHTML = `<div style="text-align: center; line-height: 2;">${matched.plainLyrics.replace(/\n/g, '<br>')}</div>`;
           }
         }
       } catch (err) {
         console.error('Lyrics error:', err);
       }
 
-      // B. Resolve Direct Stream & Start Playback
-      const track = await resolveAudioStream(query);
-      if (track && track.url) {
-        if (track.title) trackName.textContent = `${track.artist} - ${track.title}`;
-        audio.src = track.url;
-        audio.play().catch(e => {
-          console.warn('Autoplay prevented by browser:', e);
-          statusText.textContent = 'Tap Play (▶) to begin listening.';
-        });
-      } else {
-        statusText.textContent = 'Audio track not found.';
+      // B. Resolve Video IDs and Trigger YouTube Player
+      candidateIds = await resolveYouTubeVideoIds(query);
+      currentCandidateIdx = 0;
+
+      if (candidateIds.length > 0) {
+        const firstVid = candidateIds[0];
+        if (ytReady && ytPlayer && typeof ytPlayer.loadVideoById === 'function') {
+          ytPlayer.loadVideoById(firstVid);
+          ytPlayer.playVideo();
+        } else {
+          pendingVideoId = firstVid;
+        }
       }
     }
 
     // 8. Event Listeners
     playBtn.addEventListener('click', () => {
-      if (audio.paused) {
-        audio.play();
+      if (!ytPlayer || typeof ytPlayer.getPlayerState !== 'function') return;
+      const state = ytPlayer.getPlayerState();
+      if (state === YT.PlayerState.PLAYING) {
+        ytPlayer.pauseVideo();
       } else {
-        audio.pause();
+        ytPlayer.playVideo();
       }
     });
 
     seekBar.addEventListener('input', () => { isUserSeeking = true; });
     seekBar.addEventListener('change', () => {
-      if (audio.duration) {
-        audio.currentTime = (seekBar.value / 100) * audio.duration;
+      if (ytPlayer && typeof ytPlayer.getDuration === 'function') {
+        const duration = ytPlayer.getDuration() || 0;
+        const seekToSec = (seekBar.value / 100) * duration;
+        ytPlayer.seekTo(seekToSec, true);
       }
       isUserSeeking = false;
     });
 
     function handleTrigger() {
+      // Synchronously wake the YouTube player on user interaction
+      if (ytPlayer && typeof ytPlayer.playVideo === 'function') {
+        ytPlayer.playVideo();
+      }
       searchAndPlay(searchInput.value);
     }
 
