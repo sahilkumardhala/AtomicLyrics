@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>AtomicLyrics — Dynamic YouTube IFrame Player</title>
+<title>AtomicLyrics — Dynamic YouTube Player</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
@@ -114,7 +114,7 @@
     border-radius: 6px;
   }
 
-  /* Periodic Table Tiles */
+  /* Periodic Table Cards */
   .element-tile {
     display: inline-flex;
     flex-direction: column;
@@ -169,26 +169,26 @@
     padding: 0 2px;
   }
 
-  /* YouTube IFrame: Maintained with real dimensions so mobile browsers do not throttle */
+  /* Persistent Video Holder */
   .yt-container {
     position: fixed;
     bottom: calc(var(--dock-h) + 12px);
     right: 12px;
-    width: 140px;
-    height: 80px;
+    width: 130px;
+    height: 75px;
     border-radius: 8px;
     overflow: hidden;
     border: 1px solid var(--hairline);
     background: #000;
     z-index: 20;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
   }
   #ytPlayerTarget {
     width: 100%;
     height: 100%;
   }
 
-  /* Bottom Dock */
+  /* Bottom Dock Controls */
   footer.dock {
     position: fixed;
     bottom: 0;
@@ -303,7 +303,7 @@
     </div>
   </header>
 
-  <!-- Visible Mini YouTube IFrame Player -->
+  <!-- Visible Mini YouTube Player Container -->
   <div class="yt-container">
     <div id="ytPlayerTarget"></div>
   </div>
@@ -325,7 +325,7 @@
       </div>
 
       <div class="search-row">
-        <input type="text" id="searchInput" placeholder="Search track or artist..." autocomplete="off">
+        <input type="text" id="searchInput" placeholder="Search track name..." autocomplete="off">
         <button class="search-btn" id="searchBtn">Search &amp; Play</button>
       </div>
 
@@ -392,7 +392,7 @@
       return out;
     }
 
-    // 3. Periodic Decomposer
+    // 3. Dynamic Programming Periodic Decomposer
     function findOptimalDecomposition(word) {
       const memo = new Map();
 
@@ -492,15 +492,15 @@
       return result.sort((a, b) => a.time - b.time);
     }
 
-    // 5. YouTube IFrame Engine
+    // 5. YouTube Player Controller
     let ytPlayer = null;
     let ytReady = false;
     let pendingVideoId = null;
     let syncInterval = null;
     let lyricsData = [];
     let isUserSeeking = false;
-    let candidateIds = [];
-    let currentCandidateIdx = 0;
+    let candidateVideoIds = [];
+    let currentCandidateIndex = 0;
 
     const playBtn = document.getElementById('togglePlayBtn');
     const seekBar = document.getElementById('seekBar');
@@ -548,16 +548,16 @@
       }
     }
 
-    // Handle Embed Block Error 101/150 Automatically
+    // Automatic Error 150/101 Fallback Recovery
     function onPlayerError(e) {
-      console.warn('YouTube playback error code:', e.data);
-      if (currentCandidateIdx < candidateIds.length - 1) {
-        currentCandidateIdx++;
-        statusText.textContent = `Retrying with alternate upload (${currentCandidateIdx + 1}/${candidateIds.length})...`;
-        ytPlayer.loadVideoById(candidateIds[currentCandidateIdx]);
+      console.warn('YouTube playback error:', e.data);
+      if (currentCandidateIndex < candidateVideoIds.length - 1) {
+        currentCandidateIndex++;
+        statusText.textContent = `Retrying with alternate stream (${currentCandidateIndex + 1}/${candidateVideoIds.length})...`;
+        ytPlayer.loadVideoById(candidateVideoIds[currentCandidateIndex]);
         ytPlayer.playVideo();
       } else {
-        statusText.textContent = 'Playback restricted by copyright holder. Try another search.';
+        statusText.textContent = 'Playback blocked by copyright owner. Try another song.';
       }
     }
 
@@ -597,35 +597,18 @@
       }, 250);
     }
 
-    // 6. Dynamic Video ID Search Resolver
+    // 6. Backend API Video Search Resolver
     async function resolveYouTubeVideoIds(query) {
-      const cleanTerm = query.replace(/\(.*?\)/g, '').replace(/\[.*?\]/g, '').trim();
-      const endpoints = [
-        `https://pipedapi.kavin.rocks/search?q=${encodeURIComponent(cleanTerm + ' audio lyric')}&filter=videos`,
-        `https://api.piped.privacydev.net/search?q=${encodeURIComponent(cleanTerm + ' audio')}&filter=videos`,
-        `https://yewtu.be/api/v1/search?q=${encodeURIComponent(cleanTerm + ' song')}&type=video`,
-        `https://invidious.nerdvpn.de/api/v1/search?q=${encodeURIComponent(cleanTerm)}&type=video`
-      ];
-
-      for (const url of endpoints) {
-        try {
-          const controller = new AbortController();
-          const timer = setTimeout(() => controller.abort(), 3000);
-          const res = await fetch(url, { signal: controller.signal });
-          clearTimeout(timer);
-
-          if (!res.ok) continue;
-          const data = await res.json();
-          const items = data.items || data;
-          if (Array.isArray(items) && items.length > 0) {
-            const vids = items.map(it => it.videoId || (it.url && it.url.replace('/watch?v=', ''))).filter(Boolean);
-            if (vids.length > 0) return vids;
-          }
-        } catch (e) {}
+      try {
+        const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+        const data = await res.json();
+        if (data.videoIds && data.videoIds.length > 0) {
+          return data.videoIds;
+        }
+      } catch (e) {
+        console.error('Backend search request error:', e);
       }
-
-      // Default dynamic fallback
-      return ['7wtfhZwyrcc', 'ktvTqknDobU'];
+      return [];
     }
 
     // 7. Search & Play Controller
@@ -637,7 +620,7 @@
       trackName.textContent = query;
       lyricsData = [];
 
-      // A. Fetch Synced Lyrics from LRCLIB
+      // Fetch Synced Lyrics from LRCLIB
       try {
         const lrcRes = await fetch(`https://lrclib.net/api/search?q=${encodeURIComponent(query)}`);
         const lrcList = await lrcRes.json();
@@ -668,18 +651,20 @@
         console.error('Lyrics error:', err);
       }
 
-      // B. Resolve Video IDs and Trigger YouTube Player
-      candidateIds = await resolveYouTubeVideoIds(query);
-      currentCandidateIdx = 0;
+      // Fetch Video Candidates from Backend
+      candidateVideoIds = await resolveYouTubeVideoIds(query);
+      currentCandidateIndex = 0;
 
-      if (candidateIds.length > 0) {
-        const firstVid = candidateIds[0];
+      if (candidateVideoIds.length > 0) {
+        const firstVid = candidateVideoIds[0];
         if (ytReady && ytPlayer && typeof ytPlayer.loadVideoById === 'function') {
           ytPlayer.loadVideoById(firstVid);
           ytPlayer.playVideo();
         } else {
           pendingVideoId = firstVid;
         }
+      } else {
+        statusText.textContent = 'No playable streams found.';
       }
     }
 
@@ -704,17 +689,16 @@
       isUserSeeking = false;
     });
 
-    function handleTrigger() {
-      // Synchronously wake the YouTube player on user interaction
+    function handleTriggerSearch() {
       if (ytPlayer && typeof ytPlayer.playVideo === 'function') {
         ytPlayer.playVideo();
       }
       searchAndPlay(searchInput.value);
     }
 
-    searchBtn.addEventListener('click', handleTrigger);
+    searchBtn.addEventListener('click', handleTriggerSearch);
     searchInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') handleTrigger();
+      if (e.key === 'Enter') handleTriggerSearch();
     });
   </script>
 </body>
