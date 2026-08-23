@@ -600,7 +600,7 @@
     // 6. Backend API Video Search Resolver
     async function resolveYouTubeVideoIds(query) {
       try {
-        const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+        const res = await fetch(`/search?q=${encodeURIComponent(query)}`);
         const data = await res.json();
         if (data.videoIds && data.videoIds.length > 0) {
           return data.videoIds;
